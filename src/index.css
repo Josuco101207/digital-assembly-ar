@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    @apply min-h-screen w-full m-0 p-0 overflow-x-hidden bg-industrial-dark text-slate-200;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}

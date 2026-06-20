@@ -1,0 +1,27 @@
+# Configuración de Construcción para Netlify
+[build]
+  # El comando que Netlify ejecutará para compilar el proyecto
+  command = "npm run build"
+  
+  # La carpeta generada por Vite que Netlify va a servir (publicar)
+  publish = "dist"
+
+# Regla de Enrutamiento para SPA (Single Page Application)
+# Esto previene el clásico error 404 al recargar una página o ir a una subruta en React
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Encabezados de Seguridad y Caché (Opcional pero recomendado para software industrial)
+[[headers]]
+  # Caché agresivo para los assets inmutables con hash generados por Vite
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  # Modelos 3D GLTF/GLB no cambian de nombre, pero queremos asegurar que se revaliden si cambian
+  for = "/models/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
