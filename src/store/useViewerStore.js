@@ -20,9 +20,11 @@ export const useViewerStore = create((set) => ({
   explodeLevel: 0,
   setExplodeLevel: (level) => set({ explodeLevel: level }),
 
-  // ID de la pieza actualmente seleccionada por raycasting
+  // ID de la pieza actualmente seleccionada por raycasting (el grupo de piezas iguales)
   selectedPartId: null,
-  setSelectedPartId: (id) => set({ selectedPartId: id }),
+  // UUID exacto de la malla (mesh) clickeada físicamente
+  selectedMeshUuid: null,
+  setSelectedPartId: (id, uuid = null) => set({ selectedPartId: id, selectedMeshUuid: uuid }),
 
   // Nivel de secuencia de armado actual (1, 2, 3...)
   assemblyLevel: 1,

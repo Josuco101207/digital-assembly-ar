@@ -31,6 +31,7 @@ const defaultLambert = new THREE.MeshLambertMaterial({ color: 0xcccccc });
 
 const ModelCore = ({ scene }) => {
   const selectedPartId = useViewerStore((state) => state.selectedPartId);
+  const selectedMeshUuid = useViewerStore((state) => state.selectedMeshUuid);
   const setSelectedPartId = useViewerStore((state) => state.setSelectedPartId);
   const assemblyLevel = useViewerStore((state) => state.assemblyLevel);
   const setMaxAssemblyLevel = useViewerStore((state) => state.setMaxAssemblyLevel);
@@ -270,23 +271,36 @@ const ModelCore = ({ scene }) => {
         mesh.position.copy(_tempVec);
       }
 
-      // 3. Feedback Visual de Selección OPTIMIZADO
-      const isSelected = selectedPartId === mesh.userData.id;
+      // 3. Feedback Visual de Selección OPTIMIZADO con Distinción Principal/Secundaria
+      const isSelectedGroup = selectedPartId === mesh.userData.id;
+      const isSelectedPrimary = selectedMeshUuid === mesh.uuid;
+      
+      let selectionState = 0; // 0: Normal, 1: Grupo (Secundario), 2: Principal (Clickeado)
+      if (isSelectedPrimary) selectionState = 2;
+      else if (isSelectedGroup) selectionState = 1;
       
       // Solo hacer el cambio de material si el estado acaba de cambiar
-      if (isSelected !== mesh.userData.wasSelected) {
-        mesh.userData.wasSelected = isSelected;
+      if (selectionState !== mesh.userData.selectionState) {
+        mesh.userData.selectionState = selectionState;
         
-        if (isSelected && mesh.userData.originalMaterial) {
-          // Si no hemos creado el material de selección para esta pieza, lo clonamos ahora
-          if (!mesh.userData.selectedMaterial) {
-            mesh.userData.selectedMaterial = mesh.userData.originalMaterial.clone();
-            mesh.userData.selectedMaterial.emissive = new THREE.Color(0x0ea5e9);
-            mesh.userData.selectedMaterial.emissiveIntensity = 0.5;
+        if (selectionState === 2 && mesh.userData.originalMaterial) {
+          // Principal: Verde Brillante
+          if (!mesh.userData.primaryMaterial) {
+            mesh.userData.primaryMaterial = mesh.userData.originalMaterial.clone();
+            mesh.userData.primaryMaterial.emissive = new THREE.Color(0x22c55e);
+            mesh.userData.primaryMaterial.emissiveIntensity = 0.8;
           }
-          mesh.material = mesh.userData.selectedMaterial;
-        } else if (mesh.userData.originalMaterial) {
-          // Restauramos la referencia al material original (recupera Draw Calls compartidos)
+          mesh.material = mesh.userData.primaryMaterial;
+        } else if (selectionState === 1 && mesh.userData.originalMaterial) {
+          // Grupo (Idénticos): Azul Suave
+          if (!mesh.userData.groupMaterial) {
+            mesh.userData.groupMaterial = mesh.userData.originalMaterial.clone();
+            mesh.userData.groupMaterial.emissive = new THREE.Color(0x0ea5e9);
+            mesh.userData.groupMaterial.emissiveIntensity = 0.3;
+          }
+          mesh.material = mesh.userData.groupMaterial;
+        } else {
+          // Normal
           mesh.material = mesh.userData.originalMaterial;
         }
       }
@@ -297,12 +311,12 @@ const ModelCore = ({ scene }) => {
   const handleClick = (e) => {
     e.stopPropagation(); // Evita clics a través de la geometría
     if (e.object && e.object.userData.id) {
-      setSelectedPartId(e.object.userData.id);
+      setSelectedPartId(e.object.userData.id, e.object.uuid);
     }
   };
 
   const handlePointerMissed = () => {
-    setSelectedPartId(null);
+    setSelectedPartId(null, null);
   };
 
   return (
