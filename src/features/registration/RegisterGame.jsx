@@ -79,24 +79,23 @@ export const RegisterGame = () => {
     
     const onParseComplete = (sceneGroup) => {
       const partsCount = {};
+      const geometryGroups = new Map();
+      const processedMeshes = [];
       
       sceneGroup.traverse((child) => {
         if (child.isMesh) {
           let cleanName = child.name || "";
           
-          // 1. Quitar sufijos de clonación de three.js o exportadores (ej. _1, _2)
           cleanName = cleanName.replace(/_\d+$/, '');
           
-          // 2. Si el nombre es genérico de Inventor (Sólido1, Solid1, etc), usar el nombre del nodo padre
           if (/^(Sólido|Solid|Sup|Body|Cuerpo|Mesh|Node)\s*\d*$/i.test(cleanName) && child.parent) {
             cleanName = child.parent.name || cleanName;
             cleanName = cleanName.replace(/_\d+$/, '');
           }
           
-          // 3. Quitar sufijos genéricos de sólidos unidos (ej. TuPieza-Sólido1)
           cleanName = cleanName.replace(/[-_]?(Sólido|Solid|Sup|Body|Cuerpo|Mesh|Node)\s*\d*$/i, '');
+          cleanName = cleanName.replace(/[-_]\d+$/, '');
           
-          // 4. Remover recursivamente prefijos de subensamblajes de SolidWorks
           let previousName = "";
           while (cleanName !== previousName) {
             previousName = cleanName;
@@ -105,12 +104,69 @@ export const RegisterGame = () => {
 
           cleanName = cleanName || `Pieza_Sin_Nombre_${child.uuid ? child.uuid.substring(0,4) : Math.random().toString(36).substring(2,6)}`;
 
+          // Reglas de limpieza específicas para Inventor Frame Generator (Caso ROLADO y longitudes pegadas)
+          // 1. Quitar dígitos después de texto al final (ej. ROLADO1 -> ROLADO)
+          cleanName = cleanName.replace(/([A-Za-z]+)\d{1,3}$/, '$1');
+          
+          // 2. Si termina en muchísimos números (ej. 115814), asumimos que los últimos 1 o 2 son la instancia de Frame Generator
+          // OJO: Solo lo hacemos si el bloque numérico es muy largo (> 4 dígitos) para no romper el TBO-42-450.
+          if (/(-\d{5,})$/.test(cleanName)) {
+             // Es un número de 5+ dígitos al final. Quitamos los últimos 1-2
+             cleanName = cleanName.replace(/(\d{4})\d{1,2}$/, '$1');
+          }
+
+          if (!child.userData) child.userData = {};
+          child.userData.tempName = cleanName;
+
+          let gSize = new THREE.Vector3();
+          if (!child.geometry.boundingBox) child.geometry.computeBoundingBox();
+          child.geometry.boundingBox.getSize(gSize);
+          const dims = [gSize.x, gSize.y, gSize.z].sort((a,b) => a-b);
+          const sig = `${child.geometry.attributes.position.count}_${dims[0].toFixed(3)}_${dims[1].toFixed(3)}_${dims[2].toFixed(3)}`;
+          
+          if (!geometryGroups.has(sig)) geometryGroups.set(sig, []);
+          geometryGroups.get(sig).push(child);
+          
+          processedMeshes.push(child);
+        }
+      });
+
+      geometryGroups.forEach((meshes, sig) => {
+        if (meshes.length > 1) {
+          const names = Array.from(new Set(meshes.map(m => m.userData.tempName)));
+          if (names.length > 1) {
+             let prefix = names[0];
+             for (let i = 1; i < names.length; i++) {
+                 while (names[i].indexOf(prefix) !== 0) {
+                     prefix = prefix.substring(0, prefix.length - 1);
+                     if (!prefix) break;
+                 }
+             }
+             let lcp = prefix.replace(/[-_]$/, ''); 
+             
+             let isValid = true;
+             for (const name of names) {
+               const remainder = name.substring(lcp.length);
+               if (remainder.length > 0 && !/^[-_]?\d+$/.test(remainder)) {
+                 isValid = false;
+                 break;
+               }
+             }
+             
+             if (isValid && lcp.length > 2) {
+               meshes.forEach(m => m.userData.tempName = lcp);
+             }
+          }
+        }
+      });
+
+      processedMeshes.forEach(child => {
+          const cleanName = child.userData.tempName;
           if (partsCount[cleanName]) {
             partsCount[cleanName]++;
           } else {
             partsCount[cleanName] = 1;
           }
-        }
       });
 
       const newBomItems = Object.entries(partsCount).map(([id, qty]) => ({ id, qty }));
