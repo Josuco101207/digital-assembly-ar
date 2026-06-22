@@ -53,7 +53,7 @@ const SceneContent = ({ modelUrl }) => {
               <ambientLight intensity={1} />
               <directionalLight position={[10, 10, 10]} intensity={1.5} castShadow />
               <CoordinateGrid />
-              <Center disableY>
+              <Center top>
                 {modelUrl && <ModelLoader url={modelUrl} />}
               </Center>
             </group>
@@ -72,7 +72,7 @@ const SceneContent = ({ modelUrl }) => {
   return (
     <Stage environment="city" intensity={0.5} adjustCamera={false}>
       <CoordinateGrid />
-      <Center>
+      <Center top>
         {modelUrl && <ModelLoader url={modelUrl} />}
       </Center>
     </Stage>

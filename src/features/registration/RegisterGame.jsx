@@ -83,11 +83,17 @@ export const RegisterGame = () => {
         
         gltf.scene.traverse((child) => {
           if (child.isMesh) {
-            let cleanName = child.name.replace(/_\d+$/, '');
-            const lastDashIndex = cleanName.lastIndexOf('-');
+            let cleanName = child.name;
             
-            if (lastDashIndex > 0) {
-              cleanName = cleanName.substring(0, lastDashIndex);
+            // 1. Quitar sufijos de clonación de three.js o exportadores (ej. _1, _2)
+            cleanName = cleanName.replace(/_\d+$/, '');
+            
+            // 2. Remover recursivamente prefijos de subensamblajes de SolidWorks (ej. CD36-1BT23-Soldado-1Cuerpo-BT23 -> Cuerpo-BT23)
+            // Busca patrones como "Texto-Numero" inmediatamente seguidos por una letra mayúscula.
+            let previousName = "";
+            while (cleanName !== previousName) {
+              previousName = cleanName;
+              cleanName = cleanName.replace(/^.*?-\d+(?=[A-Z])/i, '');
             }
 
             if (partsCount[cleanName]) {

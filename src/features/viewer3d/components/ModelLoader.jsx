@@ -27,25 +27,23 @@ export const ModelLoader = ({ url }) => {
     // Recorremos la escena original del GLB/GLTF
     scene.traverse((child) => {
       if (child.isMesh) {
-        // Mejoramos calidad visual de fábrica
-        child.castShadow = true;
-        child.receiveShadow = true;
+        // Desactivamos sombras individuales para piezas pequeñas para no saturar la GPU en tablets
+        child.castShadow = false;
+        child.receiveShadow = false;
+
+        // LIMPIEZA DE SUFIJOS (SolidWorks GLTF)
+        let cleanName = child.name;
+        cleanName = cleanName.replace(/_\d+$/, '');
         
-        // Clonamos material para evitar que el hover en una pieza afecte a instancias idénticas
-        if (child.material) {
-          child.material = child.material.clone();
+        let previousName = "";
+        while (cleanName !== previousName) {
+          previousName = cleanName;
+          cleanName = cleanName.replace(/^.*?-\d+(?=[A-Z])/i, '');
         }
 
         // Computar Bounding Box mundial para análisis espacial
         const box = new THREE.Box3().setFromObject(child);
         const bottomY = box.min.y;
-
-        // LIMPIEZA DE SUFIJOS
-        let cleanName = child.name.replace(/_\d+$/, '');
-        const lastDashIndex = cleanName.lastIndexOf('-');
-        if (lastDashIndex > 0) {
-          cleanName = cleanName.substring(0, lastDashIndex);
-        }
 
         // Inyectamos metadatos en userData
         child.userData = {
@@ -53,8 +51,9 @@ export const ModelLoader = ({ url }) => {
           rawId: child.name,
           bottomY: bottomY, // Guardamos la altura de inicio
           requiredLevel: 1, // Se asignará en el paso de clustering
-          originalEmissive: child.material.emissive ? child.material.emissive.clone() : new THREE.Color(0x000000),
-          originalPosition: child.position.clone()
+          originalPosition: child.position.clone(),
+          originalMaterial: child.material, // Guardamos referencia al original sin clonar
+          wasSelected: false // Caché de estado
         };
 
         processedMeshes.push(child);
@@ -137,42 +136,56 @@ export const ModelLoader = ({ url }) => {
     meshesRef.current = processedMeshes;
   }, [scene]);
 
+  // Instanciamos un solo vector temporal fuera del loop para evitar Garbage Collection
+  const _tempVec = new THREE.Vector3();
+
   // Loop de Animación de Alto Rendimiento (60 FPS)
   useFrame((state, delta) => {
     meshesRef.current.forEach((mesh) => {
       // 1. Lógica de Secuencia de Armado (Caída en Y)
       const isVisible = assemblyLevel >= mesh.userData.requiredLevel;
       
-      const targetPos = mesh.userData.originalPosition.clone();
+      // Reutilizamos el vector en lugar de usar .clone() que mata la memoria
+      _tempVec.copy(mesh.userData.originalPosition);
       if (isExploded) {
         // Expandimos radialmente
-        targetPos.multiplyScalar(2.0); 
+        _tempVec.multiplyScalar(2.0); 
       }
 
       if (isVisible) {
         mesh.visible = true;
-        mesh.position.lerp(targetPos, delta * 5); // Cae hacia su posición objetivo
+        // Solo calcular lerp si aún no ha llegado a su destino (mejora rendimiento CPU)
+        if (mesh.position.distanceToSquared(_tempVec) > 0.0001) {
+          mesh.position.lerp(_tempVec, delta * 5);
+        } else {
+          mesh.position.copy(_tempVec); // Fijar si ya llegó
+        }
       } else {
         mesh.visible = false;
         // La pieza espera arriba en el aire
-        targetPos.y += 10;
-        // Forzamos la posición inicial para que cuando se vuelva visible, empiece desde arriba
-        mesh.position.copy(targetPos);
+        _tempVec.y += 10;
+        mesh.position.copy(_tempVec);
       }
-      
-      // Mantenemos la escala siempre en 1
-      mesh.scale.setScalar(1);
 
-      // (Lógica de Despiece ya cubierta en el bloque anterior)
-
-      // 3. Feedback Visual de Selección
+      // 3. Feedback Visual de Selección OPTIMIZADO
       const isSelected = selectedPartId === mesh.userData.id;
-      if (isSelected && mesh.material) {
-        mesh.material.emissive.setHex(0x0ea5e9); // Industrial Accent
-        mesh.material.emissiveIntensity = 0.5;
-      } else if (mesh.material) {
-        mesh.material.emissive.copy(mesh.userData.originalEmissive);
-        mesh.material.emissiveIntensity = 0;
+      
+      // Solo hacer el cambio de material si el estado acaba de cambiar
+      if (isSelected !== mesh.userData.wasSelected) {
+        mesh.userData.wasSelected = isSelected;
+        
+        if (isSelected && mesh.userData.originalMaterial) {
+          // Si no hemos creado el material de selección para esta pieza, lo clonamos ahora
+          if (!mesh.userData.selectedMaterial) {
+            mesh.userData.selectedMaterial = mesh.userData.originalMaterial.clone();
+            mesh.userData.selectedMaterial.emissive = new THREE.Color(0x0ea5e9);
+            mesh.userData.selectedMaterial.emissiveIntensity = 0.5;
+          }
+          mesh.material = mesh.userData.selectedMaterial;
+        } else if (mesh.userData.originalMaterial) {
+          // Restauramos la referencia al material original (recupera Draw Calls compartidos)
+          mesh.material = mesh.userData.originalMaterial;
+        }
       }
     });
   });
