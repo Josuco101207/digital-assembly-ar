@@ -82,20 +82,28 @@ export const RegisterGame = () => {
       
       sceneGroup.traverse((child) => {
         if (child.isMesh) {
-          let cleanName = child.name || `Pieza_Sin_Nombre_${child.uuid ? child.uuid.substring(0,4) : Math.random().toString(36).substring(2,6)}`;
+          let cleanName = child.name || "";
           
-          // 1. Quitar sufijos genéricos de sólidos de Inventor (ej. Sólido1, Solid1, Sup1)
-          cleanName = cleanName.replace(/[-_]?(Sólido|Solid|Sup|Body|Cuerpo)\s*\d*$/i, '');
-          
-          // 2. Quitar sufijos de clonación de three.js o exportadores (ej. _1, _2)
+          // 1. Quitar sufijos de clonación de three.js o exportadores (ej. _1, _2)
           cleanName = cleanName.replace(/_\d+$/, '');
           
-          // 3. Remover recursivamente prefijos de subensamblajes de SolidWorks
+          // 2. Si el nombre es genérico de Inventor (Sólido1, Solid1, etc), usar el nombre del nodo padre
+          if (/^(Sólido|Solid|Sup|Body|Cuerpo|Mesh|Node)\s*\d*$/i.test(cleanName) && child.parent) {
+            cleanName = child.parent.name || cleanName;
+            cleanName = cleanName.replace(/_\d+$/, '');
+          }
+          
+          // 3. Quitar sufijos genéricos de sólidos unidos (ej. TuPieza-Sólido1)
+          cleanName = cleanName.replace(/[-_]?(Sólido|Solid|Sup|Body|Cuerpo|Mesh|Node)\s*\d*$/i, '');
+          
+          // 4. Remover recursivamente prefijos de subensamblajes de SolidWorks
           let previousName = "";
           while (cleanName !== previousName) {
             previousName = cleanName;
             cleanName = cleanName.replace(/^.*?-\d+(?=[A-Z])/i, '');
           }
+
+          cleanName = cleanName || `Pieza_Sin_Nombre_${child.uuid ? child.uuid.substring(0,4) : Math.random().toString(36).substring(2,6)}`;
 
           if (partsCount[cleanName]) {
             partsCount[cleanName]++;

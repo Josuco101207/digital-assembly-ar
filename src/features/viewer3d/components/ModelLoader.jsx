@@ -47,16 +47,24 @@ const ModelCore = ({ scene }) => {
         child.receiveShadow = false;
 
         // LIMPIEZA DE SUFIJOS (SolidWorks / Inventor)
-        let cleanName = child.name || `Pieza_Sin_Nombre_${child.uuid ? child.uuid.substring(0,4) : ""}`;
+        let cleanName = child.name || "";
         
-        cleanName = cleanName.replace(/[-_]?(Sólido|Solid|Sup|Body|Cuerpo)\s*\d*$/i, '');
         cleanName = cleanName.replace(/_\d+$/, '');
+        
+        if (/^(Sólido|Solid|Sup|Body|Cuerpo|Mesh|Node)\s*\d*$/i.test(cleanName) && child.parent) {
+          cleanName = child.parent.name || cleanName;
+          cleanName = cleanName.replace(/_\d+$/, '');
+        }
+        
+        cleanName = cleanName.replace(/[-_]?(Sólido|Solid|Sup|Body|Cuerpo|Mesh|Node)\s*\d*$/i, '');
         
         let previousName = "";
         while (cleanName !== previousName) {
           previousName = cleanName;
           cleanName = cleanName.replace(/^.*?-\d+(?=[A-Z])/i, '');
         }
+
+        cleanName = cleanName || `Pieza_Sin_Nombre_${child.uuid ? child.uuid.substring(0,4) : ""}`;
 
         // Computar Bounding Box mundial para análisis espacial
         const box = new THREE.Box3().setFromObject(child);
