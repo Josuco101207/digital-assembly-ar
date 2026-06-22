@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo, useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ViewerScene } from './ViewerScene';
 import { AssemblyControls } from '../assembly/controls/AssemblyControls';
