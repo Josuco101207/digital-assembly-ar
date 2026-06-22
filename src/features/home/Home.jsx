@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Box, Cuboid, ArrowRight, Settings, Loader2 } from 'lucide-react';
-import { getGames } from '../../services/supabase/gameService';
+import { Search, Plus, Box, Cuboid, ArrowRight, Settings, Loader2, Edit2, Check, X } from 'lucide-react';
+import { getGames, updateGame } from '../../services/supabase/gameService';
 
 export const Home = () => {
   const navigate = useNavigate();
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Estados para la edición
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [editSku, setEditSku] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const fetchGames = async () => {
@@ -21,6 +27,36 @@ export const Home = () => {
     };
     fetchGames();
   }, []);
+
+  const handleEditClick = (e, game) => {
+    e.stopPropagation(); // Evitar navegar al viewer
+    setEditingId(game.id);
+    setEditName(game.name);
+    setEditSku(game.sku);
+  };
+
+  const handleCancelEdit = (e) => {
+    e.stopPropagation();
+    setEditingId(null);
+  };
+
+  const handleSaveEdit = async (e, id) => {
+    e.stopPropagation();
+    if (!editName.trim() || !editSku.trim()) return;
+    
+    setIsSaving(true);
+    try {
+      await updateGame(id, { name: editName, sku: editSku });
+      // Actualizar estado local para que se refleje de inmediato
+      setGames(games.map(g => g.id === id ? { ...g, name: editName, sku: editSku } : g));
+      setEditingId(null);
+    } catch (error) {
+      console.error("Error al actualizar ensamble:", error);
+      alert("Hubo un error al guardar los cambios.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-industrial-dark text-slate-200 font-sans p-8">
@@ -80,32 +116,91 @@ export const Home = () => {
               <p className="text-slate-400">No hay ensambles registrados aún en la base de datos.</p>
             </div>
           ) : (
-            games.map((game) => (
-              <div 
-                key={game.id}
-                onClick={() => navigate(`/viewer/${game.id}`)}
-                className="group bg-slate-800/40 border border-slate-700 hover:border-industrial-accent/50 rounded-2xl p-6 cursor-pointer transition-all hover:bg-slate-800/80 hover:shadow-[0_10px_30px_rgba(0,0,0,0.5)]"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div className="p-3 bg-slate-900/80 rounded-xl text-slate-300 group-hover:text-industrial-accent transition-colors">
-                    <Box className="w-6 h-6" />
+            games.map((game) => {
+              const isEditing = editingId === game.id;
+              
+              return (
+                <div 
+                  key={game.id}
+                  onClick={() => !isEditing && navigate(`/viewer/${game.id}`)}
+                  className={`group bg-slate-800/40 border ${isEditing ? 'border-sky-500 shadow-[0_0_15px_rgba(14,165,233,0.3)]' : 'border-slate-700 hover:border-industrial-accent/50'} rounded-2xl p-6 ${!isEditing ? 'cursor-pointer hover:bg-slate-800/80 hover:shadow-[0_10px_30px_rgba(0,0,0,0.5)]' : ''} transition-all relative`}
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="p-3 bg-slate-900/80 rounded-xl text-slate-300 group-hover:text-industrial-accent transition-colors">
+                      <Box className="w-6 h-6" />
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      {!isEditing && (
+                        <button 
+                          onClick={(e) => handleEditClick(e, game)}
+                          className="p-1.5 bg-slate-700/50 hover:bg-slate-600 rounded-lg text-slate-400 hover:text-white transition-colors"
+                          title="Editar información"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                      )}
+                      <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-full border bg-emerald-500/10 text-emerald-400 border-emerald-500/30`}>
+                        ONLINE
+                      </span>
+                    </div>
                   </div>
-                  <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-full border bg-emerald-500/10 text-emerald-400 border-emerald-500/30`}>
-                    ONLINE
-                  </span>
-                </div>
-                
-                <h3 className="text-lg font-bold text-white mb-2">{game.name}</h3>
-                
-                <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-700/50">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-slate-500 uppercase tracking-wider">SKU/ID</span>
-                    <span className="font-mono text-sm text-slate-300">{game.sku}</span>
+                  
+                  {isEditing ? (
+                    <div className="mb-2" onClick={e => e.stopPropagation()}>
+                      <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">Nombre</label>
+                      <input 
+                        type="text" 
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-1.5 focus:outline-none focus:border-industrial-accent"
+                        autoFocus
+                      />
+                    </div>
+                  ) : (
+                    <h3 className="text-lg font-bold text-white mb-2">{game.name}</h3>
+                  )}
+                  
+                  <div className={`flex items-center justify-between mt-6 pt-4 border-t border-slate-700/50`}>
+                    {isEditing ? (
+                      <div className="w-full" onClick={e => e.stopPropagation()}>
+                        <label className="block text-[10px] text-slate-400 uppercase tracking-wider mb-1">SKU/ID</label>
+                        <div className="flex items-center gap-2">
+                          <input 
+                            type="text" 
+                            value={editSku}
+                            onChange={(e) => setEditSku(e.target.value)}
+                            className="flex-1 bg-slate-900 border border-slate-600 text-white font-mono text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-industrial-accent"
+                          />
+                          <button 
+                            onClick={handleCancelEdit}
+                            disabled={isSaving}
+                            className="p-1.5 bg-slate-700 hover:bg-red-500/20 hover:text-red-400 text-slate-400 rounded-lg transition-colors"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                          <button 
+                            onClick={(e) => handleSaveEdit(e, game.id)}
+                            disabled={isSaving}
+                            className="p-1.5 bg-emerald-500/20 hover:bg-emerald-500 hover:text-white text-emerald-400 rounded-lg transition-colors"
+                          >
+                            {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-slate-500 uppercase tracking-wider">SKU/ID</span>
+                          <span className="font-mono text-sm text-slate-300">{game.sku}</span>
+                        </div>
+                        <ArrowRight className="w-5 h-5 text-slate-600 group-hover:text-industrial-accent transition-colors group-hover:translate-x-1" />
+                      </>
+                    )}
                   </div>
-                  <ArrowRight className="w-5 h-5 text-slate-600 group-hover:text-industrial-accent transition-colors group-hover:translate-x-1" />
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
 
           {/* Tarjeta para Crear Nuevo */}

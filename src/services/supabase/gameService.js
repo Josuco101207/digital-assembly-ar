@@ -146,3 +146,14 @@ export const getGameById = async (id) => {
     createdAt: data.created_at
   };
 };
+
+export const updateGame = async (id, updates) => {
+  const { data, error } = await supabase
+    .from('assemblies')
+    .update({ name: updates.name, sku: updates.sku })
+    .eq('id', id)
+    .select();
+    
+  if (error) throw error;
+  return data[0];
+};
