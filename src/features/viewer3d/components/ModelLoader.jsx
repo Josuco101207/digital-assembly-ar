@@ -42,6 +42,7 @@ const ModelCore = ({ scene }) => {
 
   useEffect(() => {
     const processedMeshes = [];
+    const geometryGroups = new Map(); // Para LCP
     
     // Recorremos la escena original del GLB/GLTF
     scene.traverse((child) => {
@@ -68,9 +69,8 @@ const ModelCore = ({ scene }) => {
            child.material = defaultLambert;
         }
 
-        // LIMPIEZA DE SUFIJOS (SolidWorks / Inventor)
+        // LIMPIEZA DE SUFIJOS BÁSICA
         let cleanName = child.name || "";
-        
         cleanName = cleanName.replace(/_\d+$/, '');
         
         if (/^(Sólido|Solid|Sup|Body|Cuerpo|Mesh|Node)\s*\d*$/i.test(cleanName) && child.parent) {
@@ -79,8 +79,6 @@ const ModelCore = ({ scene }) => {
         }
         
         cleanName = cleanName.replace(/[-_]?(Sólido|Solid|Sup|Body|Cuerpo|Mesh|Node)\s*\d*$/i, '');
-        
-        // Segunda pasada: Eliminar sufijos numéricos (ej. _686) que quedaron descubiertos tras quitar "Sólido"
         cleanName = cleanName.replace(/[-_]\d+$/, '');
         
         let previousName = "";
@@ -91,23 +89,69 @@ const ModelCore = ({ scene }) => {
 
         cleanName = cleanName || `Pieza_Sin_Nombre_${child.uuid ? child.uuid.substring(0,4) : ""}`;
 
-        // Computar Bounding Box mundial para análisis espacial
-        const box = new THREE.Box3().setFromObject(child);
-        const bottomY = box.min.y;
+        child.userData.tempName = cleanName;
 
-        // Inyectamos metadatos en userData
-        child.userData = {
-          id: cleanName,
-          rawId: child.name,
-          bottomY: bottomY, // Guardamos la altura de inicio
-          requiredLevel: 1, // Se asignará en el paso de clustering
-          originalPosition: child.position.clone(),
-          originalMaterial: child.material, // Guardamos referencia al original sin clonar
-          wasSelected: false // Caché de estado
-        };
+        // Computar firma geométrica para agrupar clones perfectos y evitar bugs de Inventor
+        let gSize = new THREE.Vector3();
+        if (!child.geometry.boundingBox) child.geometry.computeBoundingBox();
+        child.geometry.boundingBox.getSize(gSize);
+        const dims = [gSize.x, gSize.y, gSize.z].sort((a,b) => a-b);
+        const sig = `${child.geometry.attributes.position.count}_${dims[0].toFixed(3)}_${dims[1].toFixed(3)}_${dims[2].toFixed(3)}`;
+        
+        if (!geometryGroups.has(sig)) geometryGroups.set(sig, []);
+        geometryGroups.get(sig).push(child);
 
         processedMeshes.push(child);
       }
+    });
+
+    // === NORMALIZACIÓN INTELIGENTE DE NOMBRES (LCP) ===
+    // Resuelve el bug de Inventor donde borra los ":" y une los números de instancia al nombre base
+    geometryGroups.forEach((meshes, sig) => {
+      if (meshes.length > 1) {
+        const names = Array.from(new Set(meshes.map(m => m.userData.tempName)));
+        if (names.length > 1) {
+           let prefix = names[0];
+           for (let i = 1; i < names.length; i++) {
+               while (names[i].indexOf(prefix) !== 0) {
+                   prefix = prefix.substring(0, prefix.length - 1);
+                   if (!prefix) break;
+               }
+           }
+           let lcp = prefix.replace(/[-_]$/, ''); 
+           
+           let isValid = true;
+           for (const name of names) {
+             const remainder = name.substring(lcp.length);
+             // El remainder debe ser solo dígitos o separador+dígitos
+             if (remainder.length > 0 && !/^[-_]?\d+$/.test(remainder)) {
+               isValid = false;
+               break;
+             }
+           }
+           
+           if (isValid && lcp.length > 2) {
+             meshes.forEach(m => m.userData.tempName = lcp);
+           }
+        }
+      }
+    });
+
+    // Inyectamos los metadatos finales
+    processedMeshes.forEach(child => {
+        const cleanName = child.userData.tempName;
+        const box = new THREE.Box3().setFromObject(child);
+        const bottomY = box.min.y;
+
+        child.userData = {
+          id: cleanName,
+          rawId: child.name,
+          bottomY: bottomY,
+          requiredLevel: 1,
+          originalPosition: child.position.clone(),
+          originalMaterial: child.material,
+          wasSelected: false
+        };
     });
 
     // === ALGORITMO DE CLUSTERING ESPACIAL (BOTTOM-UP) ===
