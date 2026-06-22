@@ -46,6 +46,10 @@ export const useViewerStore = create((set) => ({
   viewMode: '3d',
   setViewMode: (mode) => set({ viewMode: mode }),
 
+  // Modo de Proyección de Cámara: Perspectiva (false) u Ortográfica/Paralela (true)
+  isOrthographic: false,
+  toggleOrthographic: () => set((state) => ({ isOrthographic: !state.isOrthographic })),
+
   // BOM específico del ensamble actual (extraído del CAD)
   assemblyBOM: [],
   setAssemblyBOM: (items) => set({ assemblyBOM: items }),

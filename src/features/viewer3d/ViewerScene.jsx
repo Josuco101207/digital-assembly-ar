@@ -1,6 +1,6 @@
 import React, { Suspense, useRef, useState, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Center, GizmoHelper, GizmoViewcube } from '@react-three/drei';
+import { OrbitControls, Center, GizmoHelper, GizmoViewcube, PerspectiveCamera, OrthographicCamera } from '@react-three/drei';
 import { ARButton, XR, useXR, useHitTest, Interactive } from '@react-three/xr';
 import { ModelLoader } from './components/ModelLoader';
 import { LoadingOverlay } from './components/LoadingOverlay';
@@ -90,6 +90,7 @@ const SceneContent = ({ modelUrl }) => {
 
 export const ViewerScene = () => {
   const modelUrl = useViewerStore((state) => state.modelUrl);
+  const isOrthographic = useViewerStore((state) => state.isOrthographic);
 
   return (
     <div className="w-full h-full bg-industrial-base relative">
@@ -119,8 +120,13 @@ export const ViewerScene = () => {
         shadows={false} 
         dpr={1} 
         gl={{ antialias: false, powerPreference: "high-performance", precision: "lowp" }} 
-        camera={{ position: [6, 5, 8], fov: 45 }}
       >
+        {isOrthographic ? (
+          <OrthographicCamera makeDefault position={[6, 5, 8]} zoom={45} near={-100} far={1000} />
+        ) : (
+          <PerspectiveCamera makeDefault position={[6, 5, 8]} fov={45} near={0.1} far={1000} />
+        )}
+
         <XR>
           <color attach="background" args={['#1e293b']} />
           <Suspense fallback={<LoadingOverlay />}>

@@ -11,7 +11,8 @@ export const AssemblyControls = () => {
     maxAssemblyLevel, 
     isExploded, toggleExplode, 
     isControlsVisible, toggleControls,
-    arScale, setArScale 
+    arScale, setArScale,
+    isOrthographic, toggleOrthographic
   } = useViewerStore();
 
   const handlePrev = () => {
@@ -68,17 +69,28 @@ export const AssemblyControls = () => {
         />
       </div>
 
-      {/* Controles de Escala AR */}
+      {/* Controles de Escala AR y Cámara */}
       <div className="flex justify-between items-center bg-slate-800/50 p-2 rounded-xl border border-slate-700/50">
-        <span className="text-slate-400 text-xs font-mono pl-2 tracking-widest">AR SCALE</span>
+        <button 
+          onClick={toggleOrthographic}
+          className={`px-4 py-1.5 rounded-lg text-xs font-bold tracking-widest transition-colors ${
+            isOrthographic 
+              ? 'bg-sky-500 text-white shadow-[0_0_10px_rgba(14,165,233,0.5)]' 
+              : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+          }`}
+        >
+          {isOrthographic ? 'PARALELO' : 'PERSPECTIVA'}
+        </button>
+
         <div className="flex items-center gap-2">
+          <span className="text-slate-400 text-xs font-mono pr-2 tracking-widest hidden sm:inline">AR SCL</span>
           <button 
             onClick={() => setArScale(arScale - 0.1)} 
             className="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 rounded-lg text-slate-200 font-mono text-lg transition-colors"
           >
             -
           </button>
-          <span className="text-sky-400 font-mono font-bold w-14 text-center text-sm">{arScale.toFixed(2)}x</span>
+          <span className="text-sky-400 font-mono font-bold w-12 text-center text-sm">{arScale.toFixed(2)}</span>
           <button 
             onClick={() => setArScale(arScale + 0.1)} 
             className="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 rounded-lg text-slate-200 font-mono text-lg transition-colors"
