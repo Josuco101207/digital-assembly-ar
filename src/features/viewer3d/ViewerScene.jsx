@@ -1,6 +1,6 @@
 import React, { Suspense, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Center, GizmoHelper, GizmoViewcube, GizmoViewport } from '@react-three/drei';
+import { OrbitControls, Center, GizmoHelper, GizmoViewcube } from '@react-three/drei';
 import { ARButton, XR, useXR, useHitTest, Interactive } from '@react-three/xr';
 import { ModelLoader } from './components/ModelLoader';
 import { LoadingOverlay } from './components/LoadingOverlay';
@@ -52,8 +52,8 @@ const SceneContent = ({ modelUrl }) => {
             <group position={placement.position} rotation={placement.rotation} scale={arScale}>
               <ambientLight intensity={1} />
               <directionalLight position={[10, 10, 10]} intensity={1.5} castShadow />
-              <CoordinateGrid />
               <Center top>
+                <CoordinateGrid />
                 {modelUrl && <ModelLoader url={modelUrl} />}
               </Center>
             </group>
@@ -74,8 +74,8 @@ const SceneContent = ({ modelUrl }) => {
       <ambientLight intensity={0.7} />
       <directionalLight position={[10, 10, 10]} intensity={1.2} castShadow={false} />
       <directionalLight position={[-10, 10, -10]} intensity={0.5} castShadow={false} />
-      <CoordinateGrid />
       <Center top>
+        <CoordinateGrid />
         {modelUrl && <ModelLoader url={modelUrl} />}
       </Center>
     </>
@@ -129,21 +129,10 @@ export const ViewerScene = () => {
           dampingFactor={0.05}
         />
 
-        {/* Ejes Cartesianos originales (arriba a la derecha, en su lugar original) */}
+        {/* ViewCube interactivo estilo CAD (arriba a la derecha) */}
         <GizmoHelper
           alignment="top-right"
           margin={[80, 80]}
-        >
-          <GizmoViewport 
-            axisColors={['#ef4444', '#22c55e', '#3b82f6']} // Colores técnicos
-            labelColor="white"
-          />
-        </GizmoHelper>
-
-        {/* ViewCube interactivo estilo CAD (desplazado a la izquierda para no tapar los ejes) */}
-        <GizmoHelper
-          alignment="top-right"
-          margin={[180, 80]}
         >
           <GizmoViewcube 
             color="#334155" // Color base del cubo
