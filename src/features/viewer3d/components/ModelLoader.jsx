@@ -47,7 +47,7 @@ const ModelCore = ({ scene }) => {
         child.receiveShadow = false;
 
         // LIMPIEZA DE SUFIJOS (SolidWorks GLTF)
-        let cleanName = child.name;
+        let cleanName = child.name || `Pieza_Sin_Nombre_${child.uuid ? child.uuid.substring(0,4) : ""}`;
         cleanName = cleanName.replace(/_\d+$/, '');
         
         let previousName = "";

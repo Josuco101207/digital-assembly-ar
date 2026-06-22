@@ -82,7 +82,7 @@ export const RegisterGame = () => {
       
       sceneGroup.traverse((child) => {
         if (child.isMesh) {
-          let cleanName = child.name;
+          let cleanName = child.name || `Pieza_Sin_Nombre_${child.uuid ? child.uuid.substring(0,4) : Math.random().toString(36).substring(2,6)}`;
           
           // 1. Quitar sufijos de clonación de three.js o exportadores (ej. _1, _2)
           cleanName = cleanName.replace(/_\d+$/, '');
@@ -104,7 +104,14 @@ export const RegisterGame = () => {
 
       const newBomItems = Object.entries(partsCount).map(([id, qty]) => ({ id, qty }));
       
-      setBomItems(newBomItems);
+      if (newBomItems.length === 0) {
+        setError("El archivo 3D no contiene piezas de geometría reconocibles (BOM vacío). Verifique cómo se exportó el archivo.");
+        setFileObj(null);
+        setFileName("");
+      } else {
+        setBomItems(newBomItems);
+      }
+      
       setIsParsing(false);
       
       // Liberar memoria
