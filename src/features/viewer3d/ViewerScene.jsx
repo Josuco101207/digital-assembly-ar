@@ -95,7 +95,7 @@ export const ViewerScene = () => {
         style={{ 
           position: 'absolute', 
           bottom: 'auto', 
-          top: '24px', 
+          top: '120px', // Movido hacia abajo para no tapar el ViewCube (Gizmo)
           right: '24px', 
           zIndex: 50,
           background: 'rgba(15, 23, 42, 0.8)',
