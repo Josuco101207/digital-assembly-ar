@@ -284,19 +284,19 @@ const ModelCore = ({ scene }) => {
         mesh.userData.selectionState = selectionState;
         
         if (selectionState === 2 && mesh.userData.originalMaterial) {
-          // Principal: Verde Brillante
+          // Principal: Amarillo Neón (Muy fuerte)
           if (!mesh.userData.primaryMaterial) {
             mesh.userData.primaryMaterial = mesh.userData.originalMaterial.clone();
-            mesh.userData.primaryMaterial.emissive = new THREE.Color(0x22c55e);
-            mesh.userData.primaryMaterial.emissiveIntensity = 0.8;
+            mesh.userData.primaryMaterial.emissive = new THREE.Color(0xfacc15); // Amarillo brillante
+            mesh.userData.primaryMaterial.emissiveIntensity = 0.9;
           }
           mesh.material = mesh.userData.primaryMaterial;
         } else if (selectionState === 1 && mesh.userData.originalMaterial) {
-          // Grupo (Idénticos): Azul Suave
+          // Grupo (Idénticos): Cian Fuerte (Muy visible)
           if (!mesh.userData.groupMaterial) {
             mesh.userData.groupMaterial = mesh.userData.originalMaterial.clone();
-            mesh.userData.groupMaterial.emissive = new THREE.Color(0x0ea5e9);
-            mesh.userData.groupMaterial.emissiveIntensity = 0.3;
+            mesh.userData.groupMaterial.emissive = new THREE.Color(0x06b6d4); // Cian vibrante
+            mesh.userData.groupMaterial.emissiveIntensity = 0.7; // Subimos la intensidad para que sea súper visible
           }
           mesh.material = mesh.userData.groupMaterial;
         } else {
