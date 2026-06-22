@@ -25,6 +25,10 @@ const OBJModel = ({ url }) => {
   return <ModelCore scene={scene} />;
 };
 
+// Caché global para compartir materiales y ahorrar VRAM
+const materialCache = new Map();
+const defaultLambert = new THREE.MeshLambertMaterial({ color: 0xcccccc });
+
 const ModelCore = ({ scene }) => {
   const selectedPartId = useViewerStore((state) => state.selectedPartId);
   const setSelectedPartId = useViewerStore((state) => state.setSelectedPartId);
@@ -45,6 +49,24 @@ const ModelCore = ({ scene }) => {
         // Desactivamos sombras individuales para piezas pequeñas para no saturar la GPU en tablets
         child.castShadow = false;
         child.receiveShadow = false;
+
+        // Optimizaciones de Memoria Extremas para Tablets
+        if (child.geometry.attributes.uv) child.geometry.deleteAttribute('uv');
+        if (child.geometry.attributes.color) child.geometry.deleteAttribute('color');
+
+        if (child.material) {
+           if (!materialCache.has(child.material)) {
+              const baseColor = child.material.color || new THREE.Color(0xcccccc);
+              const newMat = new THREE.MeshLambertMaterial({ 
+                 color: baseColor,
+                 side: child.material.side !== undefined ? child.material.side : THREE.DoubleSide
+              });
+              materialCache.set(child.material, newMat);
+           }
+           child.material = materialCache.get(child.material);
+        } else {
+           child.material = defaultLambert;
+        }
 
         // LIMPIEZA DE SUFIJOS (SolidWorks / Inventor)
         let cleanName = child.name || "";

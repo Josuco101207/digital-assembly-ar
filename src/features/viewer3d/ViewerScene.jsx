@@ -1,6 +1,6 @@
 import React, { Suspense, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Stage, Center, GizmoHelper, GizmoViewport } from '@react-three/drei';
+import { OrbitControls, Center, GizmoHelper, GizmoViewport } from '@react-three/drei';
 import { ARButton, XR, useXR, useHitTest, Interactive } from '@react-three/xr';
 import { ModelLoader } from './components/ModelLoader';
 import { LoadingOverlay } from './components/LoadingOverlay';
@@ -68,14 +68,17 @@ const SceneContent = ({ modelUrl }) => {
     );
   }
 
-  // Vista 3D normal en pantalla: Usamos Stage para mejor iluminación y auto-encuadre
+  // Vista 3D normal en pantalla: Iluminación estática ultraligera para máximo rendimiento
   return (
-    <Stage environment="city" intensity={0.5} adjustCamera={false}>
+    <>
+      <ambientLight intensity={0.7} />
+      <directionalLight position={[10, 10, 10]} intensity={1.2} castShadow={false} />
+      <directionalLight position={[-10, 10, -10]} intensity={0.5} castShadow={false} />
       <CoordinateGrid />
       <Center top>
         {modelUrl && <ModelLoader url={modelUrl} />}
       </Center>
-    </Stage>
+    </>
   );
 };
 
@@ -106,7 +109,12 @@ export const ViewerScene = () => {
       />
       
       {/* Canvas 3D (Desarrollador B) */}
-      <Canvas shadows dpr={[1, 2]} camera={{ position: [6, 5, 8], fov: 45 }}>
+      <Canvas 
+        shadows={false} 
+        dpr={1} 
+        gl={{ antialias: false, powerPreference: "high-performance", precision: "lowp" }} 
+        camera={{ position: [6, 5, 8], fov: 45 }}
+      >
         <XR>
           <color attach="background" args={['#1e293b']} />
           <Suspense fallback={<LoadingOverlay />}>
