@@ -1,6 +1,6 @@
 import React, { Suspense, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Center, GizmoHelper, GizmoViewport } from '@react-three/drei';
+import { OrbitControls, Center, GizmoHelper, GizmoViewcube } from '@react-three/drei';
 import { ARButton, XR, useXR, useHitTest, Interactive } from '@react-three/xr';
 import { ModelLoader } from './components/ModelLoader';
 import { LoadingOverlay } from './components/LoadingOverlay';
@@ -129,14 +129,18 @@ export const ViewerScene = () => {
           dampingFactor={0.05}
         />
 
-        {/* ViewCube interactivo (arriba a la derecha) */}
+        {/* ViewCube interactivo estilo CAD (arriba a la derecha) */}
         <GizmoHelper
           alignment="top-right"
           margin={[80, 80]}
         >
-          <GizmoViewport 
-            axisColors={['#ef4444', '#22c55e', '#3b82f6']} // Colores técnicos (X rojo, Y verde, Z azul)
-            labelColor="white"
+          <GizmoViewcube 
+            color="#334155" // Color base del cubo
+            strokeColor="#475569" // Bordes
+            textColor="white" // Texto
+            hoverColor="#0ea5e9" // Color al pasar el mouse (Cian)
+            opacity={0.85} // Ligeramente transparente
+            faces={['Derecha', 'Izquierda', 'Arriba', 'Abajo', 'Frente', 'Atrás']} // En español
           />
         </GizmoHelper>
         </XR>
