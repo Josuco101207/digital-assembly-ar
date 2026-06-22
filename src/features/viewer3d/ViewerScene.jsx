@@ -1,11 +1,10 @@
 import React, { Suspense, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Center, GizmoHelper, GizmoViewcube } from '@react-three/drei';
+import { OrbitControls, Center, GizmoHelper, GizmoViewcube, GizmoViewport } from '@react-three/drei';
 import { ARButton, XR, useXR, useHitTest, Interactive } from '@react-three/xr';
 import { ModelLoader } from './components/ModelLoader';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { CoordinateGrid } from './components/CoordinateGrid';
-import { RotateCcw, RotateCw } from 'lucide-react';
 
 // Justificación Arquitectónica: Delegamos la complejidad de la carga y animación
 // a los nuevos componentes. El Scene queda limpio y se enfoca solo en iluminación, 
@@ -50,79 +49,44 @@ const SceneContent = ({ modelUrl }) => {
           {/* Si ya tenemos el placement, mostramos el modelo en esa ubicación exacta.
               Si no lo tenemos, mostramos el reticle para que el usuario escoja el piso. */}
           {placement ? (
-            <group position={placement.position} rotation={placement.rotation}>
-              <ModelLoader url={modelUrl} />
+            <group position={placement.position} rotation={placement.rotation} scale={arScale}>
+              <ambientLight intensity={1} />
+              <directionalLight position={[10, 10, 10]} intensity={1.5} castShadow />
+              <CoordinateGrid />
+              <Center top>
+                {modelUrl && <ModelLoader url={modelUrl} />}
+              </Center>
             </group>
           ) : (
             <mesh ref={reticleRef} rotation-x={-Math.PI / 2}>
               <ringGeometry args={[0.1, 0.15, 32]} />
-              <meshBasicMaterial color="#0ea5e9" opacity={0.8} transparent />
+              <meshBasicMaterial color="white" transparent opacity={0.8} />
             </mesh>
           )}
         </Interactive>
-        
-        {/* Luz optimizada para AR */}
-        <ambientLight intensity={1.5} />
-        <directionalLight position={[10, 10, 10]} intensity={1.5} />
       </>
     );
   }
 
-  // En Pantalla (Modo Normal):
+  // Vista 3D normal en pantalla: Iluminación estática ultraligera para máximo rendimiento
   return (
     <>
-      {/* Sistema de luces hiper-realista pero optimizado */}
       <ambientLight intensity={0.7} />
-      <directionalLight position={[10, 20, 10]} intensity={1.5} castShadow shadow-bias={-0.001} />
-      <pointLight position={[-10, -10, -10]} intensity={0.5} />
-
-      <Center>
-        <ModelLoader url={modelUrl} />
+      <directionalLight position={[10, 10, 10]} intensity={1.2} castShadow={false} />
+      <directionalLight position={[-10, 10, -10]} intensity={0.5} castShadow={false} />
+      <CoordinateGrid />
+      <Center top>
+        {modelUrl && <ModelLoader url={modelUrl} />}
       </Center>
-      
-      {/* Grid Técnico como referencia visual de escala real */}
-      <CoordinateGrid size={10} divisions={10} opacity={0.3} />
     </>
   );
 };
 
 export const ViewerScene = () => {
   const modelUrl = useViewerStore((state) => state.modelUrl);
-  const controlsRef = useRef();
-
-  const handleRotateLeft = () => {
-    if (controlsRef.current) {
-      const angle = controlsRef.current.getAzimuthalAngle() + Math.PI / 2;
-      controlsRef.current.setAzimuthalAngle(angle);
-    }
-  };
-
-  const handleRotateRight = () => {
-    if (controlsRef.current) {
-      const angle = controlsRef.current.getAzimuthalAngle() - Math.PI / 2;
-      controlsRef.current.setAzimuthalAngle(angle);
-    }
-  };
 
   return (
     <div className="w-full h-full bg-industrial-base relative">
-      {/* Botones de rotación de cámara (Estilo SolidWorks/Inventor) */}
-      <div className="absolute top-6 right-[70px] z-50 flex gap-2">
-        <button 
-          onClick={handleRotateLeft}
-          className="p-2 bg-slate-800/80 hover:bg-slate-700 backdrop-blur-md border border-slate-600 rounded-lg text-slate-300 hover:text-white transition-colors shadow-lg"
-          title="Girar a la izquierda (90°)"
-        >
-          <RotateCcw className="w-5 h-5" />
-        </button>
-        <button 
-          onClick={handleRotateRight}
-          className="p-2 bg-slate-800/80 hover:bg-slate-700 backdrop-blur-md border border-slate-600 rounded-lg text-slate-300 hover:text-white transition-colors shadow-lg"
-          title="Girar a la derecha (90°)"
-        >
-          <RotateCw className="w-5 h-5" />
-        </button>
-      </div>
       <ARButton 
         sessionInit={{ 
           requiredFeatures: [], 
@@ -158,7 +122,6 @@ export const ViewerScene = () => {
           </Suspense>
 
         <OrbitControls 
-          ref={controlsRef}
           makeDefault 
           minPolarAngle={0} 
           maxPolarAngle={Math.PI / 2 - 0.05} // Evita ir por debajo del suelo
@@ -166,10 +129,21 @@ export const ViewerScene = () => {
           dampingFactor={0.05}
         />
 
-        {/* ViewCube interactivo estilo CAD (arriba a la derecha) */}
+        {/* Ejes Cartesianos originales (arriba a la derecha, en su lugar original) */}
         <GizmoHelper
           alignment="top-right"
           margin={[80, 80]}
+        >
+          <GizmoViewport 
+            axisColors={['#ef4444', '#22c55e', '#3b82f6']} // Colores técnicos
+            labelColor="white"
+          />
+        </GizmoHelper>
+
+        {/* ViewCube interactivo estilo CAD (desplazado a la izquierda para no tapar los ejes) */}
+        <GizmoHelper
+          alignment="top-right"
+          margin={[180, 80]}
         >
           <GizmoViewcube 
             color="#334155" // Color base del cubo
