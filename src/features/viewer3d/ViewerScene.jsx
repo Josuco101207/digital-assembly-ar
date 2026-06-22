@@ -1,4 +1,4 @@
-import React, { Suspense, useRef, useState } from 'react';
+import React, { Suspense, useRef, useState, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Center, GizmoHelper, GizmoViewcube } from '@react-three/drei';
 import { ARButton, XR, useXR, useHitTest, Interactive } from '@react-three/xr';
@@ -18,6 +18,12 @@ const SceneContent = ({ modelUrl }) => {
   
   const [placement, setPlacement] = useState(null); // Guardará la matriz (posición/rotación) cuando el usuario toque la pantalla
   const reticleRef = useRef();
+
+  // Capturar el offset que <Center> aplica, para pasarlo a la cuadrícula
+  const handleCentered = useCallback(({ container }) => {
+    const p = container.position;
+    useViewerStore.getState().setCenterOffset([p.x, p.y, p.z]);
+  }, []);
 
   // Hit-Test: Escanea el piso constantemente para actualizar el círculo blanco
   useHitTest((hitMatrix) => {
@@ -52,8 +58,8 @@ const SceneContent = ({ modelUrl }) => {
             <group position={placement.position} rotation={placement.rotation} scale={arScale}>
               <ambientLight intensity={1} />
               <directionalLight position={[10, 10, 10]} intensity={1.5} castShadow />
-              <Center top>
-                <CoordinateGrid />
+              <CoordinateGrid />
+              <Center top onCentered={handleCentered}>
                 {modelUrl && <ModelLoader url={modelUrl} />}
               </Center>
             </group>
@@ -74,8 +80,8 @@ const SceneContent = ({ modelUrl }) => {
       <ambientLight intensity={0.7} />
       <directionalLight position={[10, 10, 10]} intensity={1.2} castShadow={false} />
       <directionalLight position={[-10, 10, -10]} intensity={0.5} castShadow={false} />
-      <Center top>
-        <CoordinateGrid />
+      <CoordinateGrid />
+      <Center top onCentered={handleCentered}>
         {modelUrl && <ModelLoader url={modelUrl} />}
       </Center>
     </>
@@ -95,7 +101,7 @@ export const ViewerScene = () => {
         style={{ 
           position: 'absolute', 
           bottom: 'auto', 
-          top: '160px', // Movido aún más hacia abajo para no tapar el ViewCube (Gizmo)
+          top: '160px',
           right: '24px', 
           zIndex: 50,
           background: 'rgba(15, 23, 42, 0.8)',
@@ -135,12 +141,12 @@ export const ViewerScene = () => {
           margin={[80, 80]}
         >
           <GizmoViewcube 
-            color="#334155" // Color base del cubo
-            strokeColor="#475569" // Bordes
-            textColor="white" // Texto
-            hoverColor="#0ea5e9" // Color al pasar el mouse (Cian)
-            opacity={0.85} // Ligeramente transparente
-            faces={['Derecha', 'Izquierda', 'Arriba', 'Abajo', 'Frente', 'Atrás']} // En español
+            color="#334155"
+            strokeColor="#475569"
+            textColor="white"
+            hoverColor="#0ea5e9"
+            opacity={0.85}
+            faces={['Derecha', 'Izquierda', 'Arriba', 'Abajo', 'Frente', 'Atrás']}
           />
         </GizmoHelper>
         </XR>

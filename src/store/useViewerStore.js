@@ -71,4 +71,8 @@ export const useViewerStore = create((set) => ({
   // Escala definida por el usuario para el AR
   arScale: 1.0,
   setArScale: (scale) => set({ arScale: Math.max(0.001, scale) }),
+
+  // Offset que <Center> aplica al modelo (para alinear la cuadrícula)
+  centerOffset: [0, 0, 0],
+  setCenterOffset: (offset) => set({ centerOffset: offset }),
 }));

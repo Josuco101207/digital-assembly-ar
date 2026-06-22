@@ -1,19 +1,26 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Text, Line } from '@react-three/drei';
 import { useViewerStore } from '../../../store/useViewerStore';
 
 // Justificación Arquitectónica: Un sistema de coordenadas adaptativo.
 // Lee las posiciones reales de los postes (guardadas en Zustand) y
 // genera líneas exactamente en esas intersecciones, ignorando el espacio vacío.
+// Usa el centerOffset de Zustand para alinearse con el modelo centrado por <Center>.
 
 export const CoordinateGrid = () => {
   const gridLines = useViewerStore((state) => state.gridLines);
+  const centerOffset = useViewerStore((state) => state.centerOffset);
   
   const { x: uniqueX, z: uniqueZ } = gridLines;
 
   if (!uniqueX || !uniqueZ || uniqueX.length === 0 || uniqueZ.length === 0) {
     return null; // Esperamos a que se detecten los postes
   }
+
+  // El offset que <Center> aplicó al modelo: lo aplicamos a la cuadrícula también
+  const ox = centerOffset[0];
+  const oy = centerOffset[1];
+  const oz = centerOffset[2];
 
   // Extendemos un poco las líneas más allá del último poste
   const extension = 1.5;
@@ -24,8 +31,11 @@ export const CoordinateGrid = () => {
 
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
+  // Posición Y de la cuadrícula: justo debajo del modelo centrado
+  const gridY = oy - 0.02;
+
   return (
-    <group position={[0, -0.02, 0]}>
+    <group position={[ox, gridY, oz]}>
       {/* 1. Dibujar Líneas Longitudinales (Paralelas al Eje Z, constantes en X) -> Letras */}
       {uniqueX.map((xPos, idx) => {
         let letter = '';
