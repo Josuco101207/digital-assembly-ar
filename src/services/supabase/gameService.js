@@ -157,3 +157,27 @@ export const updateGame = async (id, updates) => {
   if (error) throw error;
   return data[0];
 };
+
+export const deleteGame = async (id, modelUrl) => {
+  const { error } = await supabase
+    .from('assemblies')
+    .delete()
+    .eq('id', id);
+    
+  if (error) throw error;
+  
+  if (modelUrl && modelUrl.startsWith('chunked://')) {
+    try {
+      const dataString = modelUrl.split('chunked://')[1];
+      const [prefix, totalChunksStr] = dataString.split('|');
+      const totalChunks = parseInt(totalChunksStr, 10);
+      const filesToDelete = [];
+      for(let i=0; i<totalChunks; i++) {
+        filesToDelete.push(`${prefix}.part${i}`);
+      }
+      await supabase.storage.from('models').remove(filesToDelete);
+    } catch(err) {
+      console.warn("Could not delete storage chunks", err);
+    }
+  }
+};

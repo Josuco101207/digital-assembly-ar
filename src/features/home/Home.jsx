@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Box, Cuboid, ArrowRight, Settings, Loader2, Edit2, Check, X } from 'lucide-react';
-import { getGames, updateGame } from '../../services/supabase/gameService';
+import { Search, Plus, Box, Cuboid, ArrowRight, Settings, Loader2, Edit2, Check, X, Trash2 } from 'lucide-react';
+import { getGames, updateGame, deleteGame } from '../../services/supabase/gameService';
 
 export const Home = () => {
   const navigate = useNavigate();
@@ -55,6 +55,19 @@ export const Home = () => {
       alert("Hubo un error al guardar los cambios.");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDeleteClick = async (e, game) => {
+    e.stopPropagation();
+    if (window.confirm(`¿Estás seguro de que deseas eliminar el ensamble "${game.name}"? Esta acción no se puede deshacer.`)) {
+      try {
+        await deleteGame(game.id, game.modelUrl);
+        setGames(games.filter(g => g.id !== game.id));
+      } catch (error) {
+        console.error("Error al eliminar ensamble:", error);
+        alert("Hubo un error al eliminar el ensamble.");
+      }
     }
   };
 
@@ -132,13 +145,22 @@ export const Home = () => {
                     
                     <div className="flex items-center gap-3">
                       {!isEditing && (
-                        <button 
-                          onClick={(e) => handleEditClick(e, game)}
-                          className="p-1.5 bg-slate-700/50 hover:bg-slate-600 rounded-lg text-slate-400 hover:text-white transition-colors"
-                          title="Editar información"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
+                        <>
+                          <button 
+                            onClick={(e) => handleEditClick(e, game)}
+                            className="p-1.5 bg-slate-700/50 hover:bg-slate-600 rounded-lg text-slate-400 hover:text-white transition-colors"
+                            title="Editar información"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={(e) => handleDeleteClick(e, game)}
+                            className="p-1.5 bg-slate-700/50 hover:bg-red-500/20 rounded-lg text-slate-400 hover:text-red-400 transition-colors"
+                            title="Eliminar ensamble"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
                       )}
                       <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-full border bg-emerald-500/10 text-emerald-400 border-emerald-500/30`}>
                         ONLINE
