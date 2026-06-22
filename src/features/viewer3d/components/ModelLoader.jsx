@@ -80,6 +80,9 @@ const ModelCore = ({ scene }) => {
         
         cleanName = cleanName.replace(/[-_]?(Sólido|Solid|Sup|Body|Cuerpo|Mesh|Node)\s*\d*$/i, '');
         
+        // Segunda pasada: Eliminar sufijos numéricos (ej. _686) que quedaron descubiertos tras quitar "Sólido"
+        cleanName = cleanName.replace(/[-_]\d+$/, '');
+        
         let previousName = "";
         while (cleanName !== previousName) {
           previousName = cleanName;
