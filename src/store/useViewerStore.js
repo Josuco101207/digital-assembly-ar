@@ -30,6 +30,18 @@ export const useViewerStore = create((set) => ({
   assemblyLevel: 1,
   setAssemblyLevel: (level) => set({ assemblyLevel: level }),
   
+  // Niveles activados manualmente (Modo Aislado)
+  activeLevels: [],
+  toggleActiveLevel: (level) => set((state) => {
+    const isActive = state.activeLevels.includes(level);
+    if (isActive) {
+      return { activeLevels: state.activeLevels.filter(l => l !== level) };
+    } else {
+      return { activeLevels: [...state.activeLevels, level] };
+    }
+  }),
+  clearActiveLevels: () => set({ activeLevels: [] }),
+
   // Nivel MÁXIMO de secuencia detectado automáticamente por el algoritmo espacial
   maxAssemblyLevel: 1,
   setMaxAssemblyLevel: (maxLevel) => set({ maxAssemblyLevel: maxLevel }),

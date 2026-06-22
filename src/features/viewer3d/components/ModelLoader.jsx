@@ -245,9 +245,20 @@ const ModelCore = ({ scene }) => {
 
   // Loop de Animación de Alto Rendimiento (60 FPS)
   useFrame((state, delta) => {
+    // Obtenemos los valores más recientes directo del store sin causar re-renders
+    const currentAssemblyLevel = useViewerStore.getState().assemblyLevel;
+    const currentActiveLevels = useViewerStore.getState().activeLevels;
+
     meshesRef.current.forEach((mesh) => {
       // 1. Lógica de Secuencia de Armado (Caída en Y)
-      const isVisible = assemblyLevel >= mesh.userData.requiredLevel;
+      let isVisible = false;
+      if (currentActiveLevels.length > 0) {
+        // Modo Aislado: Solo muestra los niveles explícitamente activados
+        isVisible = currentActiveLevels.includes(mesh.userData.requiredLevel);
+      } else {
+        // Modo Secuencia: Muestra todo hasta el nivel actual
+        isVisible = currentAssemblyLevel >= mesh.userData.requiredLevel;
+      }
       
       // Reutilizamos el vector en lugar de usar .clone() que mata la memoria
       _tempVec.copy(mesh.userData.originalPosition);

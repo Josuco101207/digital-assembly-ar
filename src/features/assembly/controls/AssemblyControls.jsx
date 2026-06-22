@@ -11,7 +11,8 @@ export const AssemblyControls = () => {
     maxAssemblyLevel, 
     isExploded, toggleExplode, 
     isControlsVisible, toggleControls,
-    arScale, setArScale 
+    arScale, setArScale,
+    activeLevels, toggleActiveLevel, clearActiveLevels
   } = useViewerStore();
 
   const handlePrev = () => {
@@ -92,7 +93,7 @@ export const AssemblyControls = () => {
       <div className="flex justify-between items-center mt-2">
         <button 
           onClick={handlePrev}
-          disabled={assemblyLevel === 1}
+          disabled={assemblyLevel === 1 || activeLevels.length > 0}
           className="group flex items-center justify-center p-4 rounded-2xl bg-slate-800/80 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-slate-300 border border-slate-600 hover:border-slate-500 shadow-md w-20"
         >
           <SkipBack className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />
@@ -113,11 +114,47 @@ export const AssemblyControls = () => {
 
         <button 
           onClick={handleNext}
-          disabled={assemblyLevel === maxAssemblyLevel}
+          disabled={assemblyLevel === maxAssemblyLevel || activeLevels.length > 0}
           className="group flex items-center justify-center p-4 rounded-2xl bg-industrial-accent hover:bg-sky-400 disabled:opacity-30 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500 text-white shadow-[0_0_20px_rgba(14,165,233,0.4)] hover:shadow-[0_0_30px_rgba(56,189,248,0.6)] transition-all border-2 border-sky-300/30 hover:border-white/50 w-20"
         >
           <SkipForward className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
         </button>
+      </div>
+
+      {/* Selector Manual de Niveles (Filtro Aislado) */}
+      <div className="flex flex-col mt-2 border-t border-slate-700/50 pt-3">
+        <span className="text-slate-400 text-[10px] font-bold tracking-[0.2em] uppercase mb-2">
+          Ver Capas Individuales (Aísla niveles)
+        </span>
+        <div className="flex flex-wrap gap-2">
+          {Array.from({ length: maxAssemblyLevel }, (_, i) => i + 1).map(level => {
+            const isActive = activeLevels.includes(level);
+            return (
+              <button
+                key={level}
+                onClick={() => toggleActiveLevel(level)}
+                className={`w-10 h-10 rounded-lg font-bold font-mono transition-all border ${
+                  isActive 
+                    ? 'bg-emerald-500 text-white border-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.5)]' 
+                    : 'bg-slate-800 text-slate-400 border-slate-600 hover:bg-slate-700'
+                }`}
+              >
+                {level}
+              </button>
+            )
+          })}
+          {activeLevels.length > 0 && (
+             <button
+               onClick={clearActiveLevels}
+               className="h-10 px-3 rounded-lg font-bold text-xs uppercase bg-slate-800 text-rose-400 border border-slate-600 hover:bg-rose-900/30 hover:border-rose-500 transition-all"
+             >
+               Limpiar
+             </button>
+          )}
+        </div>
+        {activeLevels.length > 0 && (
+          <p className="text-[10px] text-emerald-400 mt-2 font-mono">Modo Aislado Activo: Pasos deshabilitados.</p>
+        )}
       </div>
     </div>
     </>
