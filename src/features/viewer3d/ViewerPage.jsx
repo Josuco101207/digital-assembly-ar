@@ -13,10 +13,22 @@ export const ViewerPage = () => {
   const { juegoId } = useParams();
   const navigate = useNavigate();
   
-  const { selectedPartId, bomData, assemblyBOM, setAssemblyBOM, isLoadingBOM, fetchBOM, viewMode, setViewMode, modelUrl, setModelUrl } = useViewerStore();
+  const attemptedAutoLoad = useRef(false);
+
+  const fetchBOM = useViewerStore((state) => state.fetchBOM);
+  const bomData = useViewerStore((state) => state.bomData);
+  const setModelUrl = useViewerStore((state) => state.setModelUrl);
+  const setModelIsObj = useViewerStore((state) => state.setModelIsObj);
+  const modelUrl = useViewerStore((state) => state.modelUrl);
+  const setAssemblyBOM = useViewerStore((state) => state.setAssemblyBOM);
+  const selectedPartId = useViewerStore((state) => state.selectedPartId);
+  const viewMode = useViewerStore((state) => state.viewMode);
+  const setViewMode = useViewerStore((state) => state.setViewMode);
+  const isLoadingBOM = useViewerStore((state) => state.isLoadingBOM);
+  const assemblyBOM = useViewerStore((state) => state.assemblyBOM);
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showToast, setShowToast] = useState(false);
-  const [attemptedAutoLoad, setAttemptedAutoLoad] = useState(false);
   const [gameData, setGameData] = useState(null);
   const [downloadStatus, setDownloadStatus] = useState('');
 
@@ -27,11 +39,16 @@ export const ViewerPage = () => {
   // Carga dinámica desde Firestore
   useEffect(() => {
     const fetchGame = async () => {
-      if (juegoId && !modelUrl && !attemptedAutoLoad) {
-        setAttemptedAutoLoad(true);
+      if (juegoId && !modelUrl && !attemptedAutoLoad.current) {
+        attemptedAutoLoad.current = true;
         try {
           const game = await getGameById(juegoId);
           setGameData(game);
+          
+          if (game.modelUrl) {
+            setModelIsObj(game.modelUrl.toLowerCase().includes('.obj'));
+          }
+
           if (game.bomItems) {
             // Limpieza y consolidación automática de BOM para proyectos antiguos
             const cleanBom = {};

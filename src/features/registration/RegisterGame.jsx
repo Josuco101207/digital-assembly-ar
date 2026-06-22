@@ -62,9 +62,11 @@ export const RegisterGame = () => {
   const processFile = (file) => {
     if (!file) return;
     
-    const isValid = file.name.endsWith('.glb') || file.name.endsWith('.gltf');
-    if (!isValid) {
-      setError('Formato no soportado. Por favor sube un archivo .glb o .gltf');
+    const isGlbOrGltf = file.name.endsWith('.glb') || file.name.endsWith('.gltf');
+    const isObj = file.name.toLowerCase().endsWith('.obj');
+    
+    if (!isGlbOrGltf && !isObj) {
+      setError('Formato no soportado. Por favor sube un archivo .glb, .gltf o .obj');
       return;
     }
 
@@ -74,52 +76,57 @@ export const RegisterGame = () => {
     setIsParsing(true);
     
     const objectUrl = URL.createObjectURL(file);
-    const loader = new GLTFLoader();
     
-    loader.load(
-      objectUrl,
-      (gltf) => {
-        const partsCount = {};
-        
-        gltf.scene.traverse((child) => {
-          if (child.isMesh) {
-            let cleanName = child.name;
-            
-            // 1. Quitar sufijos de clonación de three.js o exportadores (ej. _1, _2)
-            cleanName = cleanName.replace(/_\d+$/, '');
-            
-            // 2. Remover recursivamente prefijos de subensamblajes de SolidWorks (ej. CD36-1BT23-Soldado-1Cuerpo-BT23 -> Cuerpo-BT23)
-            // Busca patrones como "Texto-Numero" inmediatamente seguidos por una letra mayúscula.
-            let previousName = "";
-            while (cleanName !== previousName) {
-              previousName = cleanName;
-              cleanName = cleanName.replace(/^.*?-\d+(?=[A-Z])/i, '');
-            }
-
-            if (partsCount[cleanName]) {
-              partsCount[cleanName]++;
-            } else {
-              partsCount[cleanName] = 1;
-            }
+    const onParseComplete = (sceneGroup) => {
+      const partsCount = {};
+      
+      sceneGroup.traverse((child) => {
+        if (child.isMesh) {
+          let cleanName = child.name;
+          
+          // 1. Quitar sufijos de clonación de three.js o exportadores (ej. _1, _2)
+          cleanName = cleanName.replace(/_\d+$/, '');
+          
+          // 2. Remover recursivamente prefijos de subensamblajes de SolidWorks
+          let previousName = "";
+          while (cleanName !== previousName) {
+            previousName = cleanName;
+            cleanName = cleanName.replace(/^.*?-\d+(?=[A-Z])/i, '');
           }
-        });
 
-        const newBomItems = Object.entries(partsCount).map(([id, qty]) => ({ id, qty }));
-        
-        setBomItems(newBomItems);
-        setIsParsing(false);
-        
-        // Liberar memoria
-        URL.revokeObjectURL(objectUrl);
-      },
-      undefined,
-      (err) => {
-        console.error("Error parseando GLTF:", err);
-        setError("Error al leer el archivo 3D.");
-        setIsParsing(false);
-        URL.revokeObjectURL(objectUrl);
-      }
-    );
+          if (partsCount[cleanName]) {
+            partsCount[cleanName]++;
+          } else {
+            partsCount[cleanName] = 1;
+          }
+        }
+      });
+
+      const newBomItems = Object.entries(partsCount).map(([id, qty]) => ({ id, qty }));
+      
+      setBomItems(newBomItems);
+      setIsParsing(false);
+      
+      // Liberar memoria
+      URL.revokeObjectURL(objectUrl);
+    };
+
+    const onParseError = (err) => {
+      console.error("Error parseando archivo 3D:", err);
+      setError("Error al leer el archivo 3D.");
+      setIsParsing(false);
+      URL.revokeObjectURL(objectUrl);
+    };
+
+    if (isGlbOrGltf) {
+      const loader = new GLTFLoader();
+      loader.load(objectUrl, (gltf) => onParseComplete(gltf.scene), undefined, onParseError);
+    } else if (isObj) {
+      import('three/examples/jsm/loaders/OBJLoader').then(({ OBJLoader }) => {
+        const loader = new OBJLoader();
+        loader.load(objectUrl, (group) => onParseComplete(group), undefined, onParseError);
+      }).catch(onParseError);
+    }
   };
 
   const handleDragOver = (e) => {
@@ -194,7 +201,7 @@ export const RegisterGame = () => {
 
           {/* Tarjeta de Archivo 3D */}
           <section className="bg-slate-900/80 border border-slate-700/60 rounded-3xl p-8 backdrop-blur-md shadow-xl">
-            <h2 className="text-lg font-bold text-white mb-6 border-b border-slate-700/50 pb-4">2. Archivo Geométrico (.GLB / .GLTF)</h2>
+            <h2 className="text-lg font-bold text-white mb-6 border-b border-slate-700/50 pb-4">2. Archivo Geométrico (.GLB / .GLTF / .OBJ)</h2>
             
             <div 
               onDragOver={handleDragOver}
@@ -206,10 +213,10 @@ export const RegisterGame = () => {
             >
               <input
                 type="file"
-                accept=".glb,.gltf"
+                accept=".glb,.gltf,.obj"
                 onChange={handleFileChange}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                title="Sube tu archivo GLB/GLTF"
+                title="Sube tu archivo GLB/GLTF/OBJ"
               />
 
               {isParsing ? (
@@ -231,7 +238,7 @@ export const RegisterGame = () => {
                     <UploadCloud className="w-8 h-8 text-slate-400 group-hover:text-industrial-accent" />
                   </div>
                   <p className="font-bold text-slate-300 mb-1">Arrastra el archivo maestro de SolidWorks</p>
-                  <p className="text-xs font-mono text-slate-500">Solo se admiten formatos optimizados para WebGL</p>
+                  <p className="text-xs font-mono text-slate-500">Soporta .glb, .gltf y .obj</p>
                 </div>
               )}
             </div>

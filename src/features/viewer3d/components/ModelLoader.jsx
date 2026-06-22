@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useGLTF } from '@react-three/drei';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useLoader } from '@react-three/fiber';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { useViewerStore } from '../../../store/useViewerStore';
 import * as THREE from 'three';
 
@@ -10,7 +11,21 @@ import * as THREE from 'three';
 // El evento onClick se inyecta en el <primitive> raíz, permitiendo que R3F maneje la delegación.
 
 export const ModelLoader = ({ url }) => {
+  const modelIsObj = useViewerStore((state) => state.modelIsObj);
+  return modelIsObj ? <OBJModel url={url} /> : <GLTFModel url={url} />;
+};
+
+const GLTFModel = ({ url }) => {
   const { scene } = useGLTF(url);
+  return <ModelCore scene={scene} />;
+};
+
+const OBJModel = ({ url }) => {
+  const scene = useLoader(OBJLoader, url);
+  return <ModelCore scene={scene} />;
+};
+
+const ModelCore = ({ scene }) => {
   const selectedPartId = useViewerStore((state) => state.selectedPartId);
   const setSelectedPartId = useViewerStore((state) => state.setSelectedPartId);
   const assemblyLevel = useViewerStore((state) => state.assemblyLevel);

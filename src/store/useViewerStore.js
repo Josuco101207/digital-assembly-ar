@@ -9,6 +9,8 @@ export const useViewerStore = create((set) => ({
   // URL del modelo 3D cargado (null = sin modelo)
   modelUrl: null,
   setModelUrl: (url) => set({ modelUrl: url }),
+  modelIsObj: false,
+  setModelIsObj: (isObj) => set({ modelIsObj: isObj }),
 
   // Líneas de la cuadrícula adaptables (extraídas de las posiciones de los postes)
   gridLines: { x: [], z: [] },
