@@ -47,7 +47,20 @@ const ModelCore = ({ scene }) => {
     
     // Recorremos la escena original del GLB/GLTF
     scene.traverse((child) => {
+      // 1. Limpieza visual: Ocultar líneas, puntos, bocetos y grillas de Inventor
+      if (child.isLine || child.isLineLoop || child.isLineSegments || child.isPoints || child.isSprite) {
+        child.visible = false;
+        return;
+      }
+
       if (child.isMesh) {
+        // Ocultar mallas que sean claramente textos o grillas por nombre
+        const n = (child.name || "").toLowerCase();
+        if (n.includes('text') || n.includes('grid') || n.includes('sketch') || n.includes('boceto') || n.includes('axis') || n.includes('eje') || n.includes('annotation')) {
+          child.visible = false;
+          return;
+        }
+
         // Desactivamos sombras individuales para piezas pequeñas para no saturar la GPU en tablets
         child.castShadow = false;
         child.receiveShadow = false;
@@ -245,20 +258,9 @@ const ModelCore = ({ scene }) => {
 
   // Loop de Animación de Alto Rendimiento (60 FPS)
   useFrame((state, delta) => {
-    // Obtenemos los valores más recientes directo del store sin causar re-renders
-    const currentAssemblyLevel = useViewerStore.getState().assemblyLevel;
-    const currentActiveLevels = useViewerStore.getState().activeLevels;
-
     meshesRef.current.forEach((mesh) => {
       // 1. Lógica de Secuencia de Armado (Caída en Y)
-      let isVisible = false;
-      if (currentActiveLevels.length > 0) {
-        // Modo Aislado: Solo muestra los niveles explícitamente activados
-        isVisible = currentActiveLevels.includes(mesh.userData.requiredLevel);
-      } else {
-        // Modo Secuencia: Muestra todo hasta el nivel actual
-        isVisible = currentAssemblyLevel >= mesh.userData.requiredLevel;
-      }
+      const isVisible = assemblyLevel >= mesh.userData.requiredLevel;
       
       // Reutilizamos el vector en lugar de usar .clone() que mata la memoria
       _tempVec.copy(mesh.userData.originalPosition);

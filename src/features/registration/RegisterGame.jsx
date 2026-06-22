@@ -87,6 +87,12 @@ export const RegisterGame = () => {
         if (child.isMesh) {
           let cleanName = child.name || "";
           
+          // Ocultar mallas que sean claramente textos o grillas por nombre
+          const n = cleanName.toLowerCase();
+          if (n.includes('text') || n.includes('grid') || n.includes('sketch') || n.includes('boceto') || n.includes('axis') || n.includes('eje') || n.includes('annotation')) {
+            return;
+          }
+
           cleanName = cleanName.replace(/_\d+$/, '');
           
           if (/^(Sólido|Solid|Sup|Body|Cuerpo|Mesh|Node)\s*\d*$/i.test(cleanName) && child.parent) {
