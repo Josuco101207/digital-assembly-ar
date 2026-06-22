@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, UploadCloud, Save, Trash2, AlertCircle, Loader2 } from 'lucide-react';
+import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { registerGame, uploadModelChunked } from '../../services/supabase/gameService';
 import localforage from 'localforage';
