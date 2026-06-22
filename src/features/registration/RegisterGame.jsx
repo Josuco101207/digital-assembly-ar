@@ -84,10 +84,13 @@ export const RegisterGame = () => {
         if (child.isMesh) {
           let cleanName = child.name || `Pieza_Sin_Nombre_${child.uuid ? child.uuid.substring(0,4) : Math.random().toString(36).substring(2,6)}`;
           
-          // 1. Quitar sufijos de clonación de three.js o exportadores (ej. _1, _2)
+          // 1. Quitar sufijos genéricos de sólidos de Inventor (ej. Sólido1, Solid1, Sup1)
+          cleanName = cleanName.replace(/[-_]?(Sólido|Solid|Sup|Body|Cuerpo)\s*\d*$/i, '');
+          
+          // 2. Quitar sufijos de clonación de three.js o exportadores (ej. _1, _2)
           cleanName = cleanName.replace(/_\d+$/, '');
           
-          // 2. Remover recursivamente prefijos de subensamblajes de SolidWorks
+          // 3. Remover recursivamente prefijos de subensamblajes de SolidWorks
           let previousName = "";
           while (cleanName !== previousName) {
             previousName = cleanName;
