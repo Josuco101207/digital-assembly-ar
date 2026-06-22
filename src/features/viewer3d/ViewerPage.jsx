@@ -36,11 +36,23 @@ export const ViewerPage = () => {
     fetchBOM();
   }, [fetchBOM]);
 
-  // Carga dinámica desde Firestore
+  const currentJuegoId = useRef(null);
+
+  // Carga dinámica desde la base de datos
   useEffect(() => {
     const fetchGame = async () => {
-      if (juegoId && !modelUrl && !attemptedAutoLoad.current) {
-        attemptedAutoLoad.current = true;
+      // Solo ejecutamos si hay un juegoId y es diferente al que ya cargamos
+      if (juegoId && currentJuegoId.current !== juegoId) {
+        currentJuegoId.current = juegoId;
+        
+        // LIMPIEZA DEL ESTADO ANTERIOR (Crucial para cambiar de modelo sin bugs)
+        setModelUrl(null);
+        setAssemblyBOM([]);
+        useViewerStore.getState().setGridLines({ x: [], z: [] });
+        useViewerStore.getState().setSelectedPartId(null, null);
+        useViewerStore.getState().setAssemblyLevel(1);
+        setGameData(null);
+        
         try {
           const game = await getGameById(juegoId);
           setGameData(game);
@@ -85,7 +97,7 @@ export const ViewerPage = () => {
       }
     };
     fetchGame();
-  }, [juegoId, modelUrl, attemptedAutoLoad, setModelUrl]);
+  }, [juegoId, setModelUrl, setModelIsObj, setAssemblyBOM]);
 
   const partData = useMemo(() => {
     if (!selectedPartId) return null;
