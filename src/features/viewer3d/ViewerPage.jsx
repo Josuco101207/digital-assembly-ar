@@ -33,7 +33,25 @@ export const ViewerPage = () => {
           const game = await getGameById(juegoId);
           setGameData(game);
           if (game.bomItems) {
-            setAssemblyBOM(game.bomItems);
+            // Limpieza y consolidación automática de BOM para proyectos antiguos
+            const cleanBom = {};
+            game.bomItems.forEach(item => {
+              let cleanId = item.id;
+              // 1. Limpieza estricta de SolidWorks GLTF (igual que el motor 3D)
+              cleanId = cleanId.replace(/_\d+$/, '');
+              let prev = "";
+              while (cleanId !== prev) {
+                prev = cleanId;
+                cleanId = cleanId.replace(/^.*?-\d+(?=[A-Z])/i, '');
+              }
+              // 2. Consolidar cantidades sumando duplicados reparados
+              if (cleanBom[cleanId]) {
+                cleanBom[cleanId].qty += item.qty;
+              } else {
+                cleanBom[cleanId] = { id: cleanId, qty: item.qty };
+              }
+            });
+            setAssemblyBOM(Object.values(cleanBom));
           }
           
           if (game.modelUrl && game.modelUrl.startsWith('chunked://')) {
