@@ -143,9 +143,9 @@ export const ViewerPage = () => {
       {/* Botón para volver al Home */}
       <button 
         onClick={() => navigate('/')}
-        className="absolute top-6 left-6 z-40 p-3 bg-slate-800 hover:bg-slate-700 rounded-full border border-slate-600 transition-colors shadow-lg"
+        className="absolute top-4 left-4 md:top-6 md:left-6 z-40 p-2 md:p-3 bg-slate-800 hover:bg-slate-700 rounded-full border border-slate-600 transition-colors shadow-lg"
       >
-        <ArrowLeft className="w-5 h-5 text-slate-300" />
+        <ArrowLeft className="w-4 h-4 md:w-5 md:h-5 text-slate-300" />
       </button>
 
       {/* Visor 3D Principal */}
@@ -157,22 +157,22 @@ export const ViewerPage = () => {
       {viewMode === 'picking' && <PickingList />}
 
       {/* Botón Central: Toggle View Mode */}
-      <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900/80 backdrop-blur-md p-1 rounded-full border border-slate-700 shadow-xl flex items-center">
+      <div className="absolute top-4 md:top-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900/80 backdrop-blur-md p-1 rounded-full border border-slate-700 shadow-xl flex items-center">
         <button
           onClick={() => setViewMode('3d')}
-          className={`flex items-center gap-2 px-6 py-2 rounded-full text-sm font-bold transition-all ${
+          className={`flex items-center gap-2 px-3 py-1.5 md:px-6 md:py-2 rounded-full text-xs md:text-sm font-bold transition-all ${
             viewMode === '3d' ? 'bg-industrial-accent text-white shadow-md' : 'text-slate-400 hover:text-white'
           }`}
         >
-          <Cuboid className="w-4 h-4" /> Ensamble 3D
+          <Cuboid className="w-3 h-3 md:w-4 md:h-4" /> <span className="hidden sm:inline">Ensamble 3D</span><span className="sm:hidden">3D</span>
         </button>
         <button
           onClick={() => setViewMode('picking')}
-          className={`flex items-center gap-2 px-6 py-2 rounded-full text-sm font-bold transition-all ${
+          className={`flex items-center gap-2 px-3 py-1.5 md:px-6 md:py-2 rounded-full text-xs md:text-sm font-bold transition-all ${
             viewMode === 'picking' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
           }`}
         >
-          <ListChecks className="w-4 h-4" /> Surtido / Picking
+          <ListChecks className="w-3 h-3 md:w-4 md:h-4" /> <span className="hidden sm:inline">Surtido / Picking</span><span className="sm:hidden">Picking</span>
         </button>
       </div>
 
@@ -180,14 +180,14 @@ export const ViewerPage = () => {
       <button 
         style={{ display: viewMode === '3d' ? 'block' : 'none' }}
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className="absolute top-20 left-6 z-30 p-3 bg-industrial-accent rounded-full shadow-[0_0_15px_rgba(14,165,233,0.5)] text-white hover:scale-105 transition-transform border border-sky-400/50"
+        className="absolute top-16 left-4 md:top-20 md:left-6 z-30 p-2 md:p-3 bg-industrial-accent rounded-full shadow-[0_0_15px_rgba(14,165,233,0.5)] text-white hover:scale-105 transition-transform border border-sky-400/50"
       >
         {isSidebarOpen ? <ChevronLeft className="w-6 h-6" /> : <ChevronRight className="w-6 h-6" />}
       </button>
 
       {/* Sidebar de Inspección */}
       <aside 
-        className={`absolute top-36 left-6 bottom-40 z-20 w-80 backdrop-blur-xl bg-slate-900/80 border border-slate-700/60 rounded-[2rem] p-6 shadow-2xl transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] flex flex-col gap-6 ${
+        className={`absolute top-16 left-0 bottom-32 z-20 w-[85vw] sm:w-80 sm:left-4 md:left-6 md:top-36 md:bottom-40 backdrop-blur-xl bg-slate-900/80 border border-slate-700/60 rounded-r-2xl sm:rounded-[2rem] p-4 md:p-6 shadow-2xl transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] flex flex-col gap-6 ${
           isSidebarOpen && viewMode === '3d' ? 'translate-x-0 opacity-100' : '-translate-x-[120%] opacity-0 pointer-events-none'
         }`}
       >
@@ -262,9 +262,9 @@ export const ViewerPage = () => {
         style={{ display: viewMode === '3d' ? 'flex' : 'none' }}
         onClick={handleCameraClick}
         title="Registro de Control de Calidad"
-        className="absolute bottom-40 md:bottom-10 right-6 md:right-10 z-30 p-5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full shadow-[0_10px_30px_rgba(16,185,129,0.4)] transition-all transform hover:scale-110 active:scale-95 border-2 border-emerald-400/30 group items-center justify-center flex"
+        className="absolute bottom-36 md:bottom-10 right-4 md:right-10 z-30 p-3 md:p-5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full shadow-[0_10px_30px_rgba(16,185,129,0.4)] transition-all transform hover:scale-110 active:scale-95 border-2 border-emerald-400/30 group items-center justify-center flex"
       >
-        <Camera className="w-8 h-8 group-hover:animate-pulse" />
+        <Camera className="w-6 h-6 md:w-8 md:h-8 group-hover:animate-pulse" />
       </button>
 
       {/* Toast Notification */}
@@ -284,7 +284,7 @@ export const ViewerPage = () => {
       <button 
         onClick={() => setModelUrl(null)}
         title="Subir Nuevo Ensamble"
-        className="absolute bottom-40 md:bottom-10 left-6 md:left-10 z-30 p-4 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-full shadow-lg transition-all border border-slate-600 flex items-center justify-center gap-2"
+        className="absolute bottom-36 md:bottom-10 left-4 md:left-10 z-30 p-3 md:p-4 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-full shadow-lg transition-all border border-slate-600 flex items-center justify-center gap-2"
       >
         <Upload className="w-5 h-5" />
       </button>

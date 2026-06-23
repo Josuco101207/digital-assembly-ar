@@ -215,8 +215,8 @@ export const RegisterGame = () => {
   };
 
   return (
-    <div className="min-h-screen bg-industrial-dark text-slate-200 font-sans p-8">
-      <header className="max-w-4xl mx-auto mb-10 flex items-center gap-4">
+    <div className="min-h-screen bg-industrial-dark text-slate-200 font-sans p-4 md:p-8">
+      <header className="max-w-4xl mx-auto mb-6 md:mb-10 flex items-center gap-4">
         <button 
           onClick={() => navigate('/')}
           className="p-3 bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors border border-slate-700"
@@ -224,7 +224,7 @@ export const RegisterGame = () => {
           <ArrowLeft className="w-5 h-5 text-slate-300" />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Registrar Nuevo Ensamble</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">Registrar Nuevo Ensamble</h1>
           <p className="text-sm font-mono text-slate-400">ENGINEERING_HUB // NEW_ENTRY</p>
         </div>
       </header>
@@ -233,7 +233,7 @@ export const RegisterGame = () => {
         <form onSubmit={handleSave} className="space-y-8">
           
           {/* Tarjeta de Información General */}
-          <section className="bg-slate-900/80 border border-slate-700/60 rounded-3xl p-8 backdrop-blur-md shadow-xl">
+          <section className="bg-slate-900/80 border border-slate-700/60 rounded-3xl p-4 md:p-8 backdrop-blur-md shadow-xl">
             <h2 className="text-lg font-bold text-white mb-6 border-b border-slate-700/50 pb-4">1. Identificación del Gemelo Digital</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -263,14 +263,14 @@ export const RegisterGame = () => {
           </section>
 
           {/* Tarjeta de Archivo 3D */}
-          <section className="bg-slate-900/80 border border-slate-700/60 rounded-3xl p-8 backdrop-blur-md shadow-xl">
+          <section className="bg-slate-900/80 border border-slate-700/60 rounded-3xl p-4 md:p-8 backdrop-blur-md shadow-xl">
             <h2 className="text-lg font-bold text-white mb-6 border-b border-slate-700/50 pb-4">2. Archivo Geométrico (.GLB / .GLTF / .OBJ)</h2>
             
             <div 
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              className={`relative border-2 border-dashed rounded-2xl p-10 text-center transition-all cursor-pointer overflow-hidden ${
+              className={`relative border-2 border-dashed rounded-2xl p-6 md:p-10 text-center transition-all cursor-pointer overflow-hidden ${
                 isDragging ? 'border-industrial-accent bg-industrial-accent/10' : 'border-slate-600 hover:border-industrial-accent bg-slate-800/50'
               }`}
             >
@@ -314,26 +314,26 @@ export const RegisterGame = () => {
           </section>
 
           {/* Tarjeta de BOM */}
-          <section className="bg-slate-900/80 border border-slate-700/60 rounded-3xl p-8 backdrop-blur-md shadow-xl">
+          <section className="bg-slate-900/80 border border-slate-700/60 rounded-3xl p-4 md:p-8 backdrop-blur-md shadow-xl">
             <div className="flex justify-between items-center mb-6 border-b border-slate-700/50 pb-4">
               <h2 className="text-lg font-bold text-white">3. Estructura de Materiales (BOM)</h2>
             </div>
 
             <div className="space-y-3">
               {/* Encabezados de Tabla */}
-              <div className="grid grid-cols-12 gap-4 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider items-center text-center">
-                <div className="col-span-2">N.º DE ELEMENTO</div>
-                <div className="col-span-6 text-left">N.º DE PIEZA</div>
+              <div className="grid grid-cols-12 gap-2 md:gap-4 px-2 md:px-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider items-center text-center">
+                <div className="col-span-2 hidden sm:block">N.º DE ELEMENTO</div>
+                <div className="col-span-8 sm:col-span-6 text-left">N.º DE PIEZA</div>
                 <div className="col-span-3">CANTIDAD</div>
                 <div className="col-span-1"></div>
               </div>
               
               {bomItems.map((item, index) => (
-                <div key={index} className="grid grid-cols-12 gap-4 items-center bg-slate-800/80 p-2 rounded-xl border border-slate-700/50 hover:border-industrial-accent/50 transition-colors">
-                  <div className="col-span-2 text-center font-mono text-slate-400 font-bold">
+                <div key={index} className="grid grid-cols-12 gap-2 md:gap-4 items-center bg-slate-800/80 p-1.5 md:p-2 rounded-xl border border-slate-700/50 hover:border-industrial-accent/50 transition-colors">
+                  <div className="col-span-2 text-center font-mono text-slate-400 font-bold hidden sm:block">
                     {index + 1}
                   </div>
-                  <div className="col-span-6">
+                  <div className="col-span-8 sm:col-span-6">
                     <input 
                       type="text" 
                       placeholder="Ej. LVL1_BASE" 
@@ -373,7 +373,7 @@ export const RegisterGame = () => {
             <button 
               type="submit"
               disabled={isSaving}
-              className={`flex items-center gap-2 px-8 py-4 rounded-xl font-bold text-white shadow-lg transition-all transform hover:-translate-y-1 ${
+              className={`flex items-center gap-2 px-6 py-3 md:px-8 md:py-4 rounded-xl font-bold text-white shadow-lg transition-all transform hover:-translate-y-1 ${
                 isSaving ? 'bg-slate-600 cursor-wait' : 'bg-emerald-600 hover:bg-emerald-500 hover:shadow-[0_10px_30px_rgba(16,185,129,0.4)]'
               }`}
             >
