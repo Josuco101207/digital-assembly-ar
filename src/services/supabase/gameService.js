@@ -1,7 +1,7 @@
 import { supabase } from './config';
 import * as fflate from 'fflate';
 
-const CHUNK_SIZE = 45 * 1024 * 1024; // 45MB chunks (máximo permitido por Vercel/Supabase en Free Tier es aprox 50MB por request)
+const CHUNK_SIZE = 8 * 1024 * 1024; // 8MB chunks para un balance perfecto entre velocidad y retroalimentación visual
 
 export const uploadModelChunked = async (file, setUploadStatus) => {
   if (!file) throw new Error("No file provided");
@@ -16,9 +16,11 @@ export const uploadModelChunked = async (file, setUploadStatus) => {
   const uniquePrefix = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')}`;
   
   let completedUploads = 0;
-  const CONCURRENCY = 5;
+  const CONCURRENCY = 4; // 4 hilos paralelos = 32MB en tránsito simultáneo
   const chunkIndices = Array.from({length: totalChunks}, (_, i) => i);
   
+  if (setUploadStatus) setUploadStatus(`Iniciando subida al servidor (0 de ${totalChunks} fragmentos)...`);
+
   const uploadChunk = async (i) => {
     const start = i * CHUNK_SIZE;
     const end = Math.min(start + CHUNK_SIZE, fileData.length);
@@ -40,7 +42,7 @@ export const uploadModelChunked = async (file, setUploadStatus) => {
     }
     
     completedUploads++;
-    if (setUploadStatus) setUploadStatus(`Subiendo fragmentos... (${completedUploads} de ${totalChunks})`);
+    if (setUploadStatus) setUploadStatus(`Subiendo fragmentos a máxima velocidad... (${completedUploads} de ${totalChunks})`);
   };
 
   for (let i = 0; i < totalChunks; i += CONCURRENCY) {
