@@ -6,14 +6,13 @@ const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks para evitar timeouts y límite
 export const uploadModelChunked = async (file, setUploadStatus) => {
   if (!file) throw new Error("No file provided");
   
-  if (setUploadStatus) setUploadStatus('Comprimiendo archivo 3D localmente...');
+  if (setUploadStatus) setUploadStatus('Preparando archivo 3D localmente...');
   const arrayBuffer = await file.arrayBuffer();
   const fileData = new Uint8Array(arrayBuffer);
   
-  // Comprimir con GZIP (nivel 1 para máxima velocidad)
-  const compressedData = fflate.gzipSync(fileData, { level: 1 });
-  
-  const totalChunks = Math.ceil(compressedData.length / CHUNK_SIZE);
+  // No comprimimos con GZIP para ahorrar RAM y evitar congelar la página.
+  // Los GLB ya son binarios eficientes.
+  const totalChunks = Math.ceil(fileData.length / CHUNK_SIZE);
   const uniquePrefix = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')}`;
   
   let completedUploads = 0;
@@ -22,8 +21,8 @@ export const uploadModelChunked = async (file, setUploadStatus) => {
   
   const uploadChunk = async (i) => {
     const start = i * CHUNK_SIZE;
-    const end = Math.min(start + CHUNK_SIZE, compressedData.length);
-    const chunk = compressedData.slice(start, end);
+    const end = Math.min(start + CHUNK_SIZE, fileData.length);
+    const chunk = fileData.slice(start, end);
     
     const chunkName = `${uniquePrefix}.part${i}`;
     const chunkBlob = new Blob([chunk]);
@@ -49,13 +48,11 @@ export const uploadModelChunked = async (file, setUploadStatus) => {
     await Promise.all(batch.map(index => uploadChunk(index)));
   }
   
-  // Retornamos un indicador personalizado que la web usará para saber que es chunked
-  return `chunked://${uniquePrefix}|${totalChunks}`;
-};
-
+  // Retornamos un indicador personalizado que la web usará para saber que es chunked sin compresión
+  return `rawchunked://${uniquePrefix}|${totalChunks}`;
 export const downloadModelChunked = async (modelUrl, setUploadStatus) => {
-  // modelUrl format: chunked://prefix|totalChunks
-  const dataString = modelUrl.split('chunked://')[1];
+  const isRaw = modelUrl.startsWith('rawchunked://');
+  const dataString = modelUrl.replace('rawchunked://', '').replace('chunked://', '');
   const [prefix, totalChunksStr] = dataString.split('|');
   const totalChunks = parseInt(totalChunksStr, 10);
   
@@ -95,7 +92,7 @@ export const downloadModelChunked = async (modelUrl, setUploadStatus) => {
   const chunks = downloadedChunks.map(c => c.data);
   let totalLength = chunks.reduce((acc, curr) => acc + curr.length, 0);
   
-  if (setUploadStatus) setUploadStatus('Uniendo y descomprimiendo archivo 3D...');
+  if (setUploadStatus) setUploadStatus('Uniendo archivo 3D...');
   
   // Unir los fragmentos
   const combinedData = new Uint8Array(totalLength);
@@ -105,11 +102,15 @@ export const downloadModelChunked = async (modelUrl, setUploadStatus) => {
     offset += chunk.length;
   }
   
-  // Descomprimir
-  const decompressedData = fflate.gunzipSync(combinedData);
+  let finalData = combinedData;
+  // Solo descomprimir si NO es raw
+  if (!isRaw) {
+    if (setUploadStatus) setUploadStatus('Descomprimiendo archivo 3D...');
+    finalData = fflate.gunzipSync(combinedData);
+  }
   
   // Crear Blob URL
-  const blob = new Blob([decompressedData]);
+  const blob = new Blob([finalData]);
   return URL.createObjectURL(blob);
 };
 
@@ -190,9 +191,9 @@ export const deleteGame = async (id, modelUrl) => {
     
   if (error) throw error;
   
-  if (modelUrl && modelUrl.startsWith('chunked://')) {
+  if (modelUrl && (modelUrl.startsWith('chunked://') || modelUrl.startsWith('rawchunked://'))) {
     try {
-      const dataString = modelUrl.split('chunked://')[1];
+      const dataString = modelUrl.replace('rawchunked://', '').replace('chunked://', '');
       const [prefix, totalChunksStr] = dataString.split('|');
       const totalChunks = parseInt(totalChunksStr, 10);
       const filesToDelete = [];
