@@ -1,7 +1,7 @@
 import { supabase } from './config';
 import * as fflate from 'fflate';
 
-const CHUNK_SIZE = 40 * 1024 * 1024; // 40MB chunks para no pasarnos de 50MB
+const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks para evitar timeouts y límites de payload en redes lentas
 
 export const uploadModelChunked = async (file, setUploadStatus) => {
   if (!file) throw new Error("No file provided");
