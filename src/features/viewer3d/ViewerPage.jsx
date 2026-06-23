@@ -1,6 +1,7 @@
 import React, { useMemo, useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ViewerScene } from './ViewerScene';
+import { AlvaARViewer } from './components/AlvaARViewer';
 import { AssemblyControls } from '../assembly/controls/AssemblyControls';
 import { PickingList } from '../picking/PickingList';
 import { ModelUploader } from './components/ModelUploader';
@@ -153,6 +154,13 @@ export const ViewerPage = () => {
         <ViewerScene />
       </main>
 
+      {/* Visor AR Alva Experimental */}
+      {viewMode === 'alva-ar' && (
+        <main className="absolute inset-0 z-10">
+          <AlvaARViewer />
+        </main>
+      )}
+
       {/* Vista de Inventario / Picking List */}
       {viewMode === 'picking' && <PickingList />}
 
@@ -165,6 +173,14 @@ export const ViewerPage = () => {
           }`}
         >
           <Cuboid className="w-3 h-3 md:w-4 md:h-4" /> <span className="hidden sm:inline">Ensamble 3D</span><span className="sm:hidden">3D</span>
+        </button>
+        <button
+          onClick={() => setViewMode('alva-ar')}
+          className={`flex items-center gap-2 px-3 py-1.5 md:px-6 md:py-2 rounded-full text-xs md:text-sm font-bold transition-all ${
+            viewMode === 'alva-ar' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Camera className="w-3 h-3 md:w-4 md:h-4" /> <span className="hidden sm:inline">AR (Alva)</span><span className="sm:hidden">AR</span>
         </button>
         <button
           onClick={() => setViewMode('picking')}
