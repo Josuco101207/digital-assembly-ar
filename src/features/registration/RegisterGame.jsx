@@ -99,10 +99,9 @@ export const RegisterGame = () => {
             cleanName = child.parent.name || cleanName;
             cleanName = cleanName.replace(/_\d+$/, '');
           }
-          
-          cleanName = cleanName.replace(/[-_]?(Sólido|Solid|Sup|Body|Cuerpo|Mesh|Node)\s*\d*$/i, '');
-          cleanName = cleanName.replace(/[-_]\d+$/, '');
 
+          cleanName = cleanName.replace(/[-_]?(Sólido|Solid|Sup|Body|Cuerpo|Mesh|Node)\s*\d*$/i, '');
+          
           cleanName = cleanName || `Pieza_Sin_Nombre_${child.uuid ? child.uuid.substring(0,4) : Math.random().toString(36).substring(2,6)}`;
 
           if (!child.userData) child.userData = {};

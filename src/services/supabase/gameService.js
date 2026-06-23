@@ -1,115 +1,92 @@
-import { supabase, supabaseUrl, supabaseKey } from './config';
+import { supabase } from './config';
 import * as fflate from 'fflate';
 
-export const uploadModelChunked = (file, setUploadStatus) => {
-  return new Promise(async (resolve, reject) => {
-    if (!file) return reject(new Error("No file provided"));
+const CHUNK_SIZE = 40 * 1024 * 1024; // 40MB chunks para no pasarnos de 50MB
+
+export const uploadModelChunked = async (file, setUploadStatus) => {
+  if (!file) throw new Error("No file provided");
+  
+  if (setUploadStatus) setUploadStatus('Comprimiendo archivo 3D localmente...');
+  const arrayBuffer = await file.arrayBuffer();
+  const fileData = new Uint8Array(arrayBuffer);
+  
+  // Comprimir con GZIP
+  const compressedData = fflate.gzipSync(fileData, { level: 6 });
+  
+  const totalChunks = Math.ceil(compressedData.length / CHUNK_SIZE);
+  const uniquePrefix = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')}`;
+  
+  for (let i = 0; i < totalChunks; i++) {
+    const start = i * CHUNK_SIZE;
+    const end = Math.min(start + CHUNK_SIZE, compressedData.length);
+    const chunk = compressedData.slice(start, end);
     
-    if (setUploadStatus) setUploadStatus('Iniciando Web Worker para subida TUS...');
+    if (setUploadStatus) setUploadStatus(`Subiendo fragmento ${i + 1} de ${totalChunks}...`);
     
-    const { data: { session } } = await supabase.auth.getSession();
-    const accessToken = session?.access_token;
+    const chunkName = `${uniquePrefix}.part${i}`;
+    const chunkBlob = new Blob([chunk]);
     
-    const uniquePrefix = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')}`;
-    
-    // Iniciar Web Worker
-    const worker = new Worker(new URL('../../workers/uploadWorker.js', import.meta.url), { type: 'module' });
-    
-    worker.onmessage = (e) => {
-      const { type, percentage, error, uploadName } = e.data;
-      
-      if (type === 'progress') {
-        const { completed, total } = e.data;
-        if (setUploadStatus) setUploadStatus(`Subiendo de forma híbrida (Worker)... fragmento ${completed} de ${total} (${percentage}%)`);
-      } else if (type === 'error') {
-        worker.terminate();
-        reject(new Error(`Error en Worker TUS: ${error}`));
-      } else if (type === 'success') {
-        worker.terminate();
-        // Devolvemos el formato rawchunked para que la descarga manual funcione
-        const { uploadName, totalChunks } = e.data;
-        resolve(`rawchunked://${uploadName}|${totalChunks}`);
-      }
-    };
-    
-    worker.onerror = (err) => {
-      worker.terminate();
-      reject(new Error(`Fallo fatal en Web Worker: ${err.message}`));
-    };
-    
-    worker.postMessage({
-      file,
-      supabaseUrl,
-      supabaseAnonKey: supabaseKey,
-      accessToken,
-      uniquePrefix
-    });
-  });
+    const { error } = await supabase.storage
+      .from('models')
+      .upload(chunkName, chunkBlob, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (error) {
+      console.error(`Error subiendo chunk ${i}:`, error);
+      throw new Error(`Fallo al subir el fragmento ${i + 1}`);
+    }
+  }
+  
+  // Retornamos un indicador personalizado que la web usará para saber que es chunked
+  return `chunked://${uniquePrefix}|${totalChunks}`;
 };
 
 export const downloadModelChunked = async (modelUrl, setUploadStatus) => {
-  // Manejo de compatibilidad hacia atrás
-  const isRaw = modelUrl.startsWith('rawchunked://');
-  const isChunked = modelUrl.startsWith('chunked://');
+  // modelUrl format: chunked://prefix|totalChunks
+  const dataString = modelUrl.split('chunked://')[1];
+  const [prefix, totalChunksStr] = dataString.split('|');
+  const totalChunks = parseInt(totalChunksStr, 10);
   
-  if (isRaw || isChunked) {
-    const dataString = modelUrl.replace('rawchunked://', '').replace('chunked://', '');
-    const [prefix, totalChunksStr] = dataString.split('|');
-    const totalChunks = parseInt(totalChunksStr, 10);
+  const chunks = [];
+  let totalLength = 0;
+  
+  for (let i = 0; i < totalChunks; i++) {
+    if (setUploadStatus) setUploadStatus(`Descargando fragmento ${i + 1} de ${totalChunks}...`);
+    const chunkName = `${prefix}.part${i}`;
     
-    let completedDownloads = 0;
-    const CONCURRENCY = 5;
-    const chunkIndices = Array.from({length: totalChunks}, (_, i) => i);
-    const downloadedChunks = [];
-    
-    const downloadChunk = async (i) => {
-      const chunkName = `${prefix}.part${i}`;
-      const { data, error } = await supabase.storage.from('models').download(chunkName);
-      if (error) throw new Error(`Fallo al descargar el fragmento ${i + 1}`);
-      const arrayBuffer = await data.arrayBuffer();
-      completedDownloads++;
-      if (setUploadStatus) setUploadStatus(`Descargando fragmentos antiguos... (${completedDownloads} de ${totalChunks})`);
-      return { index: i, data: new Uint8Array(arrayBuffer) };
-    };
-
-    for (let i = 0; i < totalChunks; i += CONCURRENCY) {
-      const batch = chunkIndices.slice(i, i + CONCURRENCY);
-      const results = await Promise.all(batch.map(index => downloadChunk(index)));
-      downloadedChunks.push(...results);
+    const { data, error } = await supabase.storage
+      .from('models')
+      .download(chunkName);
+      
+    if (error) {
+      console.error(`Error descargando chunk ${i}:`, error);
+      throw new Error(`Fallo al descargar el fragmento ${i + 1}`);
     }
     
-    downloadedChunks.sort((a, b) => a.index - b.index);
-    const chunks = downloadedChunks.map(c => c.data);
-    let totalLength = chunks.reduce((acc, curr) => acc + curr.length, 0);
-    
-    if (setUploadStatus) setUploadStatus('Uniendo archivo 3D...');
-    const combinedData = new Uint8Array(totalLength);
-    let offset = 0;
-    for (const chunk of chunks) {
-      combinedData.set(chunk, offset);
-      offset += chunk.length;
-    }
-    
-    let finalData = combinedData;
-    if (isChunked) {
-      if (setUploadStatus) setUploadStatus('Descomprimiendo archivo 3D...');
-      finalData = fflate.gunzipSync(combinedData);
-    }
-    
-    const blob = new Blob([finalData]);
-    return URL.createObjectURL(blob);
+    const arrayBuffer = await data.arrayBuffer();
+    const uint8Arr = new Uint8Array(arrayBuffer);
+    chunks.push(uint8Arr);
+    totalLength += uint8Arr.length;
   }
   
-  // Nueva lógica TUS (es un solo archivo directo en el bucket)
-  const isTus = modelUrl.startsWith('tus://');
-  const fileName = isTus ? modelUrl.replace('tus://', '') : modelUrl;
+  if (setUploadStatus) setUploadStatus('Uniendo y descomprimiendo archivo 3D...');
   
-  if (setUploadStatus) setUploadStatus('Descargando modelo completo (TUS)...');
+  // Unir los fragmentos
+  const combinedData = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    combinedData.set(chunk, offset);
+    offset += chunk.length;
+  }
   
-  const { data, error } = await supabase.storage.from('models').download(fileName);
-  if (error) throw new Error('Fallo al descargar el modelo completo.');
+  // Descomprimir
+  const decompressedData = fflate.gunzipSync(combinedData);
   
-  return URL.createObjectURL(data);
+  // Crear Blob URL
+  const blob = new Blob([decompressedData]);
+  return URL.createObjectURL(blob);
 };
 
 export const registerGame = async (gameData) => {
@@ -189,9 +166,9 @@ export const deleteGame = async (id, modelUrl) => {
     
   if (error) throw error;
   
-  if (modelUrl && (modelUrl.startsWith('chunked://') || modelUrl.startsWith('rawchunked://'))) {
+  if (modelUrl && modelUrl.startsWith('chunked://')) {
     try {
-      const dataString = modelUrl.replace('rawchunked://', '').replace('chunked://', '');
+      const dataString = modelUrl.split('chunked://')[1];
       const [prefix, totalChunksStr] = dataString.split('|');
       const totalChunks = parseInt(totalChunksStr, 10);
       const filesToDelete = [];
@@ -201,13 +178,6 @@ export const deleteGame = async (id, modelUrl) => {
       await supabase.storage.from('models').remove(filesToDelete);
     } catch(err) {
       console.warn("Could not delete storage chunks", err);
-    }
-  } else if (modelUrl && modelUrl.startsWith('tus://')) {
-    try {
-      const fileName = modelUrl.replace('tus://', '');
-      await supabase.storage.from('models').remove([fileName]);
-    } catch(err) {
-      console.warn("Could not delete TUS storage file", err);
     }
   }
 };

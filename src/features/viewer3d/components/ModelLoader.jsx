@@ -93,8 +93,7 @@ const ModelCore = ({ scene }) => {
         }
         
         cleanName = cleanName.replace(/[-_]?(Sólido|Solid|Sup|Body|Cuerpo|Mesh|Node)\s*\d*$/i, '');
-        cleanName = cleanName.replace(/[-_]\d+$/, '');
-
+        
         cleanName = cleanName || `Pieza_Sin_Nombre_${child.uuid ? child.uuid.substring(0,4) : ""}`;
 
         child.userData.tempName = cleanName;

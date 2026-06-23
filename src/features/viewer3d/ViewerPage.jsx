@@ -66,8 +66,10 @@ export const ViewerPage = () => {
             const cleanBom = {};
             game.bomItems.forEach(item => {
               let cleanId = item.id;
-              // 1. Limpieza de sufijos básicos
+              // 1. Limpieza estricta de SolidWorks GLTF (solo instanciamientos y genéricos)
               cleanId = cleanId.replace(/_\d+$/, '');
+              cleanId = cleanId.replace(/[-_]?(Sólido|Solid|Sup|Body|Cuerpo|Mesh|Node)\s*\d*$/i, '');
+              
               // 2. Consolidar cantidades sumando duplicados reparados
               if (cleanBom[cleanId]) {
                 cleanBom[cleanId].qty += item.qty;
@@ -78,7 +80,7 @@ export const ViewerPage = () => {
             setAssemblyBOM(Object.values(cleanBom));
           }
           
-          if (game.modelUrl && (game.modelUrl.startsWith('chunked://') || game.modelUrl.startsWith('rawchunked://'))) {
+          if (game.modelUrl && game.modelUrl.startsWith('chunked://')) {
             const url = await downloadModelChunked(game.modelUrl, setDownloadStatus);
             setModelUrl(url);
             setDownloadStatus('');
