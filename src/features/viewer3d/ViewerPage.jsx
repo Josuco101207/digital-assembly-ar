@@ -78,7 +78,7 @@ export const ViewerPage = () => {
             setAssemblyBOM(Object.values(cleanBom));
           }
           
-          if (game.modelUrl && game.modelUrl.startsWith('chunked://')) {
+          if (game.modelUrl && (game.modelUrl.startsWith('chunked://') || game.modelUrl.startsWith('rawchunked://'))) {
             const url = await downloadModelChunked(game.modelUrl, setDownloadStatus);
             setModelUrl(url);
             setDownloadStatus('');
