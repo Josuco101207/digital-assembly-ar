@@ -137,7 +137,7 @@ export const ViewerScene = () => {
         <OrbitControls 
           makeDefault 
           minPolarAngle={0} 
-          maxPolarAngle={Math.PI / 2 - 0.05} // Evita ir por debajo del suelo
+          maxPolarAngle={Math.PI} // Permite rotar completamente por debajo del modelo
           enableDamping
           dampingFactor={0.05}
         />
