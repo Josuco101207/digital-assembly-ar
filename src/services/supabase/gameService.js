@@ -1,7 +1,7 @@
 import { supabase } from './config';
 import * as fflate from 'fflate';
 
-const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks para evitar timeouts y límites de payload en redes lentas
+const CHUNK_SIZE = 45 * 1024 * 1024; // 45MB chunks (máximo permitido por Vercel/Supabase en Free Tier es aprox 50MB por request)
 
 export const uploadModelChunked = async (file, setUploadStatus) => {
   if (!file) throw new Error("No file provided");
@@ -16,7 +16,7 @@ export const uploadModelChunked = async (file, setUploadStatus) => {
   const uniquePrefix = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')}`;
   
   let completedUploads = 0;
-  const CONCURRENCY = 3;
+  const CONCURRENCY = 5;
   const chunkIndices = Array.from({length: totalChunks}, (_, i) => i);
   
   const uploadChunk = async (i) => {
@@ -59,7 +59,7 @@ export const downloadModelChunked = async (modelUrl, setUploadStatus) => {
   const totalChunks = parseInt(totalChunksStr, 10);
   
   let completedDownloads = 0;
-  const CONCURRENCY = 3;
+  const CONCURRENCY = 5;
   const chunkIndices = Array.from({length: totalChunks}, (_, i) => i);
   const downloadedChunks = [];
   
