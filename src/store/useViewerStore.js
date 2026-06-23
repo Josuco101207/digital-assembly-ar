@@ -83,4 +83,8 @@ export const useViewerStore = create((set) => ({
   // Offset que <Center> aplica al modelo (para alinear la cuadrícula)
   centerOffset: [0, 0, 0],
   setCenterOffset: (offset) => set({ centerOffset: offset }),
+
+  // Opacidad global del modelo 3D (0.0 a 1.0)
+  modelOpacity: 1.0,
+  setModelOpacity: (opacity) => set({ modelOpacity: opacity }),
 }));

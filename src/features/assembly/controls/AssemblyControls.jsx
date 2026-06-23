@@ -70,47 +70,66 @@ export const AssemblyControls = () => {
         />
       </div>
 
-      {/* Controles de Escala AR y Cámara */}
-      <div className="flex justify-between items-center bg-slate-800/50 p-1.5 md:p-2 rounded-xl border border-slate-700/50">
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={toggleOrthographic}
-            className={`px-2 py-1 md:px-3 md:py-1.5 rounded-lg text-[10px] md:text-xs font-bold tracking-widest transition-colors ${
-              isOrthographic 
-                ? 'bg-sky-500 text-white shadow-[0_0_10px_rgba(14,165,233,0.5)]' 
-                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-            }`}
-          >
-            {isOrthographic ? 'PARALELO' : 'PERSPECTIVA'}
-          </button>
-          <button 
-            onClick={toggleGrid}
-            className={`px-2 py-1 md:px-3 md:py-1.5 rounded-lg text-[10px] md:text-xs font-bold tracking-widest transition-colors ${
-              showGrid 
-                ? 'bg-sky-500 text-white shadow-[0_0_10px_rgba(14,165,233,0.5)]' 
-                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-            }`}
-            title="Mostrar/Ocultar Cuadrícula"
-          >
-            MALLA
-          </button>
+      {/* Controles de Escala AR, Cámara y Opacidad */}
+      <div className="flex flex-col gap-2 bg-slate-800/50 p-2 md:p-3 rounded-xl border border-slate-700/50">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={toggleOrthographic}
+              className={`px-2 py-1 md:px-3 md:py-1.5 rounded-lg text-[10px] md:text-xs font-bold tracking-widest transition-colors ${
+                isOrthographic 
+                  ? 'bg-sky-500 text-white shadow-[0_0_10px_rgba(14,165,233,0.5)]' 
+                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              }`}
+            >
+              {isOrthographic ? 'PARALELO' : 'PERSPECTIVA'}
+            </button>
+            <button 
+              onClick={toggleGrid}
+              className={`px-2 py-1 md:px-3 md:py-1.5 rounded-lg text-[10px] md:text-xs font-bold tracking-widest transition-colors ${
+                showGrid 
+                  ? 'bg-sky-500 text-white shadow-[0_0_10px_rgba(14,165,233,0.5)]' 
+                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              }`}
+              title="Mostrar/Ocultar Cuadrícula"
+            >
+              MALLA
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-slate-400 text-xs font-mono pr-2 tracking-widest hidden sm:inline">AR SCL</span>
+            <button 
+              onClick={() => setArScale(arScale - 0.1)} 
+              className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 rounded-lg text-slate-200 font-mono text-lg transition-colors"
+            >
+              -
+            </button>
+            <span className="text-sky-400 font-mono font-bold w-10 text-xs md:w-12 text-center md:text-sm">{arScale.toFixed(2)}</span>
+            <button 
+              onClick={() => setArScale(arScale + 0.1)} 
+              className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 rounded-lg text-slate-200 font-mono text-lg transition-colors"
+            >
+              +
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-slate-400 text-xs font-mono pr-2 tracking-widest hidden sm:inline">AR SCL</span>
-          <button 
-            onClick={() => setArScale(arScale - 0.1)} 
-            className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 rounded-lg text-slate-200 font-mono text-lg transition-colors"
-          >
-            -
-          </button>
-          <span className="text-sky-400 font-mono font-bold w-10 text-xs md:w-12 text-center md:text-sm">{arScale.toFixed(2)}</span>
-          <button 
-            onClick={() => setArScale(arScale + 0.1)} 
-            className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 active:bg-slate-500 rounded-lg text-slate-200 font-mono text-lg transition-colors"
-          >
-            +
-          </button>
+        {/* Opacity Slider */}
+        <div className="flex items-center gap-3 pt-1 border-t border-slate-700/50 mt-1">
+          <span className="text-slate-400 text-[10px] font-bold tracking-widest uppercase w-20">Transp.</span>
+          <input 
+            type="range" 
+            min="0.1" 
+            max="1.0" 
+            step="0.05"
+            value={useViewerStore((state) => state.modelOpacity)}
+            onChange={(e) => useViewerStore.getState().setModelOpacity(parseFloat(e.target.value))}
+            className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sky-500 hover:accent-sky-400"
+          />
+          <span className="text-sky-400 font-mono font-bold text-xs w-10 text-right">
+            {Math.round(useViewerStore((state) => state.modelOpacity) * 100)}%
+          </span>
         </div>
       </div>
 

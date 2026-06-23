@@ -37,9 +37,27 @@ const ModelCore = ({ scene }) => {
   const setMaxAssemblyLevel = useViewerStore((state) => state.setMaxAssemblyLevel);
   // Escuchamos el estado de explosión directamente
   const isExploded = useViewerStore((state) => state.isExploded);
+  const modelOpacity = useViewerStore((state) => state.modelOpacity);
 
   // Referencia mutable para iterar meshes eficientemente en useFrame sin re-renderizar
   const meshesRef = useRef([]);
+
+  // Aplicar opacidad al cambiar el slider
+  useEffect(() => {
+    meshesRef.current.forEach((mesh) => {
+      const isTrans = modelOpacity < 1.0;
+      const setOpacity = (mat) => {
+        if (!mat) return;
+        mat.transparent = isTrans;
+        mat.opacity = modelOpacity;
+        mat.needsUpdate = true;
+      };
+      setOpacity(mesh.userData.originalMaterial);
+      setOpacity(mesh.userData.primaryMaterial);
+      setOpacity(mesh.userData.groupMaterial);
+      setOpacity(mesh.material);
+    });
+  }, [modelOpacity]);
 
   useEffect(() => {
     const processedMeshes = [];
@@ -250,6 +268,21 @@ const ModelCore = ({ scene }) => {
       
       useViewerStore.getState().setGridLines({ x: uniqueX, z: uniqueZ });
     }
+
+    // Aplicar la opacidad almacenada en el estado a los nuevos materiales
+    const currentOpacity = useViewerStore.getState().modelOpacity;
+    const isTrans = currentOpacity < 1.0;
+    processedMeshes.forEach(mesh => {
+      if (mesh.material) {
+        mesh.material.transparent = isTrans;
+        mesh.material.opacity = currentOpacity;
+        mesh.material.needsUpdate = true;
+      }
+      if (mesh.userData.originalMaterial) {
+        mesh.userData.originalMaterial.transparent = isTrans;
+        mesh.userData.originalMaterial.opacity = currentOpacity;
+      }
+    });
 
     meshesRef.current = processedMeshes;
   }, [scene]);
