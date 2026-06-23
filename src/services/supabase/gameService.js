@@ -19,14 +19,16 @@ export const uploadModelChunked = (file, setUploadStatus) => {
       const { type, percentage, error, uploadName } = e.data;
       
       if (type === 'progress') {
-        if (setUploadStatus) setUploadStatus(`Subiendo archivo a máxima velocidad (TUS)... ${percentage}%`);
+        const { completed, total } = e.data;
+        if (setUploadStatus) setUploadStatus(`Subiendo de forma híbrida (Worker)... fragmento ${completed} de ${total} (${percentage}%)`);
       } else if (type === 'error') {
         worker.terminate();
         reject(new Error(`Error en Worker TUS: ${error}`));
       } else if (type === 'success') {
         worker.terminate();
-        // Devolvemos el prefijo con un indicador "tus://" para saber que no está particionado
-        resolve(`tus://${uploadName}`);
+        // Devolvemos el formato rawchunked para que la descarga manual funcione
+        const { uploadName, totalChunks } = e.data;
+        resolve(`rawchunked://${uploadName}|${totalChunks}`);
       }
     };
     
