@@ -50,6 +50,8 @@ export const uploadModelChunked = async (file, setUploadStatus) => {
   
   // Retornamos un indicador personalizado que la web usará para saber que es chunked sin compresión
   return `rawchunked://${uniquePrefix}|${totalChunks}`;
+};
+
 export const downloadModelChunked = async (modelUrl, setUploadStatus) => {
   const isRaw = modelUrl.startsWith('rawchunked://');
   const dataString = modelUrl.replace('rawchunked://', '').replace('chunked://', '');
