@@ -10,18 +10,20 @@ export const uploadModelChunked = async (file, setUploadStatus) => {
   const arrayBuffer = await file.arrayBuffer();
   const fileData = new Uint8Array(arrayBuffer);
   
-  // Comprimir con GZIP
-  const compressedData = fflate.gzipSync(fileData, { level: 6 });
+  // Comprimir con GZIP (nivel 1 para máxima velocidad)
+  const compressedData = fflate.gzipSync(fileData, { level: 1 });
   
   const totalChunks = Math.ceil(compressedData.length / CHUNK_SIZE);
   const uniquePrefix = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')}`;
   
-  for (let i = 0; i < totalChunks; i++) {
+  let completedUploads = 0;
+  const CONCURRENCY = 3;
+  const chunkIndices = Array.from({length: totalChunks}, (_, i) => i);
+  
+  const uploadChunk = async (i) => {
     const start = i * CHUNK_SIZE;
     const end = Math.min(start + CHUNK_SIZE, compressedData.length);
     const chunk = compressedData.slice(start, end);
-    
-    if (setUploadStatus) setUploadStatus(`Subiendo fragmento ${i + 1} de ${totalChunks}...`);
     
     const chunkName = `${uniquePrefix}.part${i}`;
     const chunkBlob = new Blob([chunk]);
@@ -37,6 +39,14 @@ export const uploadModelChunked = async (file, setUploadStatus) => {
       console.error(`Error subiendo chunk ${i}:`, error);
       throw new Error(`Fallo al subir el fragmento ${i + 1}`);
     }
+    
+    completedUploads++;
+    if (setUploadStatus) setUploadStatus(`Subiendo fragmentos... (${completedUploads} de ${totalChunks})`);
+  };
+
+  for (let i = 0; i < totalChunks; i += CONCURRENCY) {
+    const batch = chunkIndices.slice(i, i + CONCURRENCY);
+    await Promise.all(batch.map(index => uploadChunk(index)));
   }
   
   // Retornamos un indicador personalizado que la web usará para saber que es chunked
@@ -49,11 +59,12 @@ export const downloadModelChunked = async (modelUrl, setUploadStatus) => {
   const [prefix, totalChunksStr] = dataString.split('|');
   const totalChunks = parseInt(totalChunksStr, 10);
   
-  const chunks = [];
-  let totalLength = 0;
+  let completedDownloads = 0;
+  const CONCURRENCY = 3;
+  const chunkIndices = Array.from({length: totalChunks}, (_, i) => i);
+  const downloadedChunks = [];
   
-  for (let i = 0; i < totalChunks; i++) {
-    if (setUploadStatus) setUploadStatus(`Descargando fragmento ${i + 1} de ${totalChunks}...`);
+  const downloadChunk = async (i) => {
     const chunkName = `${prefix}.part${i}`;
     
     const { data, error } = await supabase.storage
@@ -67,9 +78,22 @@ export const downloadModelChunked = async (modelUrl, setUploadStatus) => {
     
     const arrayBuffer = await data.arrayBuffer();
     const uint8Arr = new Uint8Array(arrayBuffer);
-    chunks.push(uint8Arr);
-    totalLength += uint8Arr.length;
+    
+    completedDownloads++;
+    if (setUploadStatus) setUploadStatus(`Descargando fragmentos... (${completedDownloads} de ${totalChunks})`);
+    
+    return { index: i, data: uint8Arr };
+  };
+
+  for (let i = 0; i < totalChunks; i += CONCURRENCY) {
+    const batch = chunkIndices.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(batch.map(index => downloadChunk(index)));
+    downloadedChunks.push(...results);
   }
+  
+  downloadedChunks.sort((a, b) => a.index - b.index);
+  const chunks = downloadedChunks.map(c => c.data);
+  let totalLength = chunks.reduce((acc, curr) => acc + curr.length, 0);
   
   if (setUploadStatus) setUploadStatus('Uniendo y descomprimiendo archivo 3D...');
   
