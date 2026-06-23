@@ -102,25 +102,8 @@ export const RegisterGame = () => {
           
           cleanName = cleanName.replace(/[-_]?(Sólido|Solid|Sup|Body|Cuerpo|Mesh|Node)\s*\d*$/i, '');
           cleanName = cleanName.replace(/[-_]\d+$/, '');
-          
-          let previousName = "";
-          while (cleanName !== previousName) {
-            previousName = cleanName;
-            cleanName = cleanName.replace(/^.*?-\d+(?=[A-Z])/i, '');
-          }
 
           cleanName = cleanName || `Pieza_Sin_Nombre_${child.uuid ? child.uuid.substring(0,4) : Math.random().toString(36).substring(2,6)}`;
-
-          // Reglas de limpieza específicas para Inventor Frame Generator (Caso ROLADO y longitudes pegadas)
-          // 1. Quitar dígitos después de texto al final (ej. ROLADO1 -> ROLADO)
-          cleanName = cleanName.replace(/([A-Za-z]+)\d{1,3}$/, '$1');
-          
-          // 2. Si termina en muchísimos números (ej. 115814), asumimos que los últimos 1 o 2 son la instancia de Frame Generator
-          // OJO: Solo lo hacemos si el bloque numérico es muy largo (> 4 dígitos) para no romper el TBO-42-450.
-          if (/(-\d{5,})$/.test(cleanName)) {
-             // Es un número de 5+ dígitos al final. Quitamos los últimos 1-2
-             cleanName = cleanName.replace(/(\d{4})\d{1,2}$/, '$1');
-          }
 
           if (!child.userData) child.userData = {};
           child.userData.tempName = cleanName;

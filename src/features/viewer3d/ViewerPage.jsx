@@ -66,13 +66,8 @@ export const ViewerPage = () => {
             const cleanBom = {};
             game.bomItems.forEach(item => {
               let cleanId = item.id;
-              // 1. Limpieza estricta de SolidWorks GLTF (igual que el motor 3D)
+              // 1. Limpieza de sufijos básicos
               cleanId = cleanId.replace(/_\d+$/, '');
-              let prev = "";
-              while (cleanId !== prev) {
-                prev = cleanId;
-                cleanId = cleanId.replace(/^.*?-\d+(?=[A-Z])/i, '');
-              }
               // 2. Consolidar cantidades sumando duplicados reparados
               if (cleanBom[cleanId]) {
                 cleanBom[cleanId].qty += item.qty;
