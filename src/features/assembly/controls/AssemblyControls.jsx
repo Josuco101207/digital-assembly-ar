@@ -12,7 +12,8 @@ export const AssemblyControls = () => {
     isExploded, toggleExplode, 
     isControlsVisible, toggleControls,
     arScale, setArScale,
-    isOrthographic, toggleOrthographic
+    isOrthographic, toggleOrthographic,
+    showGrid, toggleGrid
   } = useViewerStore();
 
   const handlePrev = () => {
@@ -71,16 +72,29 @@ export const AssemblyControls = () => {
 
       {/* Controles de Escala AR y Cámara */}
       <div className="flex justify-between items-center bg-slate-800/50 p-2 rounded-xl border border-slate-700/50">
-        <button 
-          onClick={toggleOrthographic}
-          className={`px-4 py-1.5 rounded-lg text-xs font-bold tracking-widest transition-colors ${
-            isOrthographic 
-              ? 'bg-sky-500 text-white shadow-[0_0_10px_rgba(14,165,233,0.5)]' 
-              : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-          }`}
-        >
-          {isOrthographic ? 'PARALELO' : 'PERSPECTIVA'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={toggleOrthographic}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold tracking-widest transition-colors ${
+              isOrthographic 
+                ? 'bg-sky-500 text-white shadow-[0_0_10px_rgba(14,165,233,0.5)]' 
+                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+            }`}
+          >
+            {isOrthographic ? 'PARALELO' : 'PERSPECTIVA'}
+          </button>
+          <button 
+            onClick={toggleGrid}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold tracking-widest transition-colors ${
+              showGrid 
+                ? 'bg-sky-500 text-white shadow-[0_0_10px_rgba(14,165,233,0.5)]' 
+                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+            }`}
+            title="Mostrar/Ocultar Cuadrícula"
+          >
+            MALLA
+          </button>
+        </div>
 
         <div className="flex items-center gap-2">
           <span className="text-slate-400 text-xs font-mono pr-2 tracking-widest hidden sm:inline">AR SCL</span>

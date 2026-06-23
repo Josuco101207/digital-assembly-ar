@@ -50,6 +50,10 @@ export const useViewerStore = create((set) => ({
   isOrthographic: false,
   toggleOrthographic: () => set((state) => ({ isOrthographic: !state.isOrthographic })),
 
+  // Mostrar/Ocultar el plano cartesiano (cuadrícula)
+  showGrid: true,
+  toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
+
   // BOM específico del ensamble actual (extraído del CAD)
   assemblyBOM: [],
   setAssemblyBOM: (items) => set({ assemblyBOM: items }),

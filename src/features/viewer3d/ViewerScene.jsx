@@ -15,6 +15,7 @@ import { useViewerStore } from '../../store/useViewerStore';
 const SceneContent = ({ modelUrl }) => {
   const { isPresenting, session } = useXR();
   const arScale = useViewerStore((state) => state.arScale);
+  const showGrid = useViewerStore((state) => state.showGrid);
   
   const [placement, setPlacement] = useState(null); // Guardará la matriz (posición/rotación) cuando el usuario toque la pantalla
   const reticleRef = useRef();
@@ -58,7 +59,7 @@ const SceneContent = ({ modelUrl }) => {
             <group position={placement.position} rotation={placement.rotation} scale={arScale}>
               <ambientLight intensity={1} />
               <directionalLight position={[10, 10, 10]} intensity={1.5} castShadow />
-              <CoordinateGrid />
+              {showGrid && <CoordinateGrid />}
               <Center top onCentered={handleCentered}>
                 {modelUrl && <ModelLoader url={modelUrl} />}
               </Center>
@@ -80,7 +81,7 @@ const SceneContent = ({ modelUrl }) => {
       <ambientLight intensity={0.7} />
       <directionalLight position={[10, 10, 10]} intensity={1.2} castShadow={false} />
       <directionalLight position={[-10, 10, -10]} intensity={0.5} castShadow={false} />
-      <CoordinateGrid />
+      {showGrid && <CoordinateGrid />}
       <Center top onCentered={handleCentered}>
         {modelUrl && <ModelLoader url={modelUrl} />}
       </Center>
