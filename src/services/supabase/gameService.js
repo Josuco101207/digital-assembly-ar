@@ -1,7 +1,7 @@
 import { supabase } from './config';
 import * as fflate from 'fflate';
 
-const CHUNK_SIZE = 8 * 1024 * 1024; // 8MB chunks para un balance perfecto entre velocidad y retroalimentación visual
+const CHUNK_SIZE = 40 * 1024 * 1024; // 40MB chunks
 
 export const uploadModelChunked = async (file, setUploadStatus) => {
   if (!file) throw new Error("No file provided");
@@ -16,7 +16,7 @@ export const uploadModelChunked = async (file, setUploadStatus) => {
   const uniquePrefix = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')}`;
   
   let completedUploads = 0;
-  const CONCURRENCY = 4; // 4 hilos paralelos = 32MB en tránsito simultáneo
+  const CONCURRENCY = 6; // Todos los pedazos simultáneos
   const chunkIndices = Array.from({length: totalChunks}, (_, i) => i);
   
   if (setUploadStatus) setUploadStatus(`Iniciando subida al servidor (0 de ${totalChunks} fragmentos)...`);
