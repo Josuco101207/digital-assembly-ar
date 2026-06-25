@@ -19,14 +19,16 @@ export const convertSkpToGlb = async (file, onProgress) => {
     // Generar un nombre seguro sin espacios
     const safeName = `temp_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
     
-    // Necesitamos enviar el archivo como binario puro (application/octet-stream)
+    // Necesitamos usar FormData nativo para enviar el archivo
+    const formData = new FormData();
+    formData.append('File', file, safeName);
+
     const uploadRes = await fetch(`https://api.aspose.cloud/v3.0/3d/storage/file/${safeName}`, {
       method: 'PUT',
       headers: {
-        'Authorization': `Bearer ${access_token}`,
-        'Content-Type': 'application/octet-stream'
+        'Authorization': `Bearer ${access_token}`
       },
-      body: file
+      body: formData
     });
 
     if (!uploadRes.ok) {
