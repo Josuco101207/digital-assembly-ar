@@ -94,6 +94,22 @@ export const ViewerPage = () => {
       }
     };
     fetchGame();
+    
+    // Limpieza de caché para liberar RAM (OPTIMIZACIÓN EXTREMA)
+    return () => {
+      if (useViewerStore.getState().modelUrl) {
+        URL.revokeObjectURL(useViewerStore.getState().modelUrl);
+        // Intentar limpiar las cachés globales de Three.js
+        import('@react-three/fiber').then(({ useLoader }) => {
+           import('three/examples/jsm/loaders/OBJLoader').then(({ OBJLoader }) => {
+              try { useLoader.clear(OBJLoader, useViewerStore.getState().modelUrl); } catch(e){}
+           });
+           import('three/examples/jsm/loaders/GLTFLoader').then(({ GLTFLoader }) => {
+              try { useLoader.clear(GLTFLoader, useViewerStore.getState().modelUrl); } catch(e){}
+           });
+        });
+      }
+    };
   }, [juegoId, setModelUrl, setModelIsObj, setAssemblyBOM]);
 
   const partData = useMemo(() => {

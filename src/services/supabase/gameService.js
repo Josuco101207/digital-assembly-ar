@@ -81,11 +81,15 @@ export const downloadModelChunked = async (modelUrl, setUploadStatus) => {
     offset += chunk.length;
   }
   
+  // OPTIMIZACIÓN EXTREMA: Liberar arreglo de chunks de la RAM antes de descomprimir
+  chunks.length = 0;
+  
   // Descomprimir
   const decompressedData = fflate.gunzipSync(combinedData);
   
-  // Crear Blob URL
-  const blob = new Blob([decompressedData]);
+  // Crear Blob URL (le pasamos el array buffer directamente)
+  const blob = new Blob([decompressedData.buffer]);
+  
   return URL.createObjectURL(blob);
 };
 
