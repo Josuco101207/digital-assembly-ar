@@ -178,9 +178,9 @@ export const RegisterGame = () => {
         const newBomItems = Object.entries(partsCount).map(([id, qty]) => ({ id, qty }));
         
         if (newBomItems.length === 0) {
-          setError("El archivo 3D no contiene piezas de geometría reconocibles (BOM vacío). Verifique cómo se exportó el archivo.");
-          setFileObj(null);
-          setFileName("");
+          // Ya no bloqueamos al usuario si el BOM está vacío "por ahorita"
+          setError("Aviso: No se detectaron piezas separadas automáticamente, pero puedes continuar.");
+          setBomItems([]);
         } else {
           setBomItems(newBomItems);
         }
