@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { registerGame, uploadModelChunked } from '../../services/supabase/gameService';
 import localforage from 'localforage';
+import { convertSkpToGlb } from '../../services/asposeConvert';
 
 export const RegisterGame = () => {
   const navigate = useNavigate();
@@ -60,135 +61,159 @@ export const RegisterGame = () => {
     setBomItems(bomItems.filter((_, i) => i !== index));
   };
 
-  const processFile = (file) => {
+  const processFile = async (file) => {
     if (!file) return;
     
-    const isGlbOrGltf = file.name.endsWith('.glb') || file.name.endsWith('.gltf');
+    const isGlbOrGltf = file.name.toLowerCase().endsWith('.glb') || file.name.toLowerCase().endsWith('.gltf');
     const isObj = file.name.toLowerCase().endsWith('.obj');
+    const isSkp = file.name.toLowerCase().endsWith('.skp');
     
-    if (!isGlbOrGltf && !isObj) {
-      setError('Formato no soportado. Por favor sube un archivo .glb, .gltf o .obj');
+    if (!isGlbOrGltf && !isObj && !isSkp) {
+      setError('Formato no soportado. Por favor sube un archivo .glb, .gltf, .obj o .skp');
       return;
     }
 
     setError(null);
     setFileName(file.name);
-    setFileObj(file);
     setIsParsing(true);
+    setUploadStatus('');
     
-    const objectUrl = URL.createObjectURL(file);
-    
-    const onParseComplete = (sceneGroup) => {
-      const partsCount = {};
-      const geometryGroups = new Map();
-      const processedMeshes = [];
-      
-      sceneGroup.traverse((child) => {
-        if (child.isMesh) {
-          let cleanName = child.name || "";
-          
-          // Ocultar mallas que sean claramente textos o grillas por nombre
-          const n = cleanName.toLowerCase();
-          if (n.includes('text') || n.includes('grid') || n.includes('sketch') || n.includes('boceto') || n.includes('axis') || n.includes('eje') || n.includes('annotation')) {
-            return;
-          }
+    try {
+      let objectUrl;
+      let finalFileObj = file;
 
-          cleanName = cleanName.replace(/_\d+$/, '');
-          
-          if (/^(Sólido|Solid|Sup|Body|Cuerpo|Mesh|Node)\s*\d*$/i.test(cleanName) && child.parent) {
-            cleanName = child.parent.name || cleanName;
-            cleanName = cleanName.replace(/_\d+$/, '');
-          }
-
-          cleanName = cleanName.replace(/[-_]?(Sólido|Solid|Sup|Body|Cuerpo|Mesh|Node)\s*\d*$/i, '');
-          
-          cleanName = cleanName || `Pieza_Sin_Nombre_${child.uuid ? child.uuid.substring(0,4) : Math.random().toString(36).substring(2,6)}`;
-
-          if (!child.userData) child.userData = {};
-          child.userData.tempName = cleanName;
-
-          let gSize = new THREE.Vector3();
-          if (!child.geometry.boundingBox) child.geometry.computeBoundingBox();
-          child.geometry.boundingBox.getSize(gSize);
-          const dims = [gSize.x, gSize.y, gSize.z].sort((a,b) => a-b);
-          const sig = `${child.geometry.attributes.position.count}_${dims[0].toFixed(3)}_${dims[1].toFixed(3)}_${dims[2].toFixed(3)}`;
-          
-          if (!geometryGroups.has(sig)) geometryGroups.set(sig, []);
-          geometryGroups.get(sig).push(child);
-          
-          processedMeshes.push(child);
-        }
-      });
-
-      geometryGroups.forEach((meshes, sig) => {
-        if (meshes.length > 1) {
-          const names = Array.from(new Set(meshes.map(m => m.userData.tempName)));
-          if (names.length > 1) {
-             let prefix = names[0];
-             for (let i = 1; i < names.length; i++) {
-                 while (names[i].indexOf(prefix) !== 0) {
-                     prefix = prefix.substring(0, prefix.length - 1);
-                     if (!prefix) break;
-                 }
-             }
-             let lcp = prefix.replace(/[-_]$/, ''); 
-             
-             let isValid = true;
-             for (const name of names) {
-               const remainder = name.substring(lcp.length);
-               if (remainder.length > 0 && !/^[-_]?\d+$/.test(remainder)) {
-                 isValid = false;
-                 break;
-               }
-             }
-             
-             if (isValid && lcp.length > 2) {
-               meshes.forEach(m => m.userData.tempName = lcp);
-             }
-          }
-        }
-      });
-
-      processedMeshes.forEach(child => {
-          const cleanName = child.userData.tempName;
-          if (partsCount[cleanName]) {
-            partsCount[cleanName]++;
-          } else {
-            partsCount[cleanName] = 1;
-          }
-      });
-
-      const newBomItems = Object.entries(partsCount).map(([id, qty]) => ({ id, qty }));
-      
-      if (newBomItems.length === 0) {
-        setError("El archivo 3D no contiene piezas de geometría reconocibles (BOM vacío). Verifique cómo se exportó el archivo.");
-        setFileObj(null);
-        setFileName("");
+      if (isSkp) {
+        // Conversión SKP a GLB
+        objectUrl = await convertSkpToGlb(file, (msg) => setUploadStatus(msg));
+        // Generar un nuevo File para que se suba a Supabase como GLB
+        const res = await fetch(objectUrl);
+        const blob = await res.blob();
+        finalFileObj = new File([blob], file.name.replace(/\.skp$/i, '.glb'), { type: 'model/gltf-binary' });
+        setUploadStatus(''); // Limpiar estado de carga
       } else {
-        setBomItems(newBomItems);
+        objectUrl = URL.createObjectURL(file);
       }
       
-      setIsParsing(false);
-      
-      // Liberar memoria
-      URL.revokeObjectURL(objectUrl);
-    };
+      setFileObj(finalFileObj);
 
-    const onParseError = (err) => {
-      console.error("Error parseando archivo 3D:", err);
-      setError("Error al leer el archivo 3D.");
-      setIsParsing(false);
-      URL.revokeObjectURL(objectUrl);
-    };
+      const onParseComplete = (sceneGroup) => {
+        const partsCount = {};
+        const geometryGroups = new Map();
+        const processedMeshes = [];
+        
+        sceneGroup.traverse((child) => {
+          if (child.isMesh) {
+            let cleanName = child.name || "";
+            
+            const n = cleanName.toLowerCase();
+            if (n.includes('text') || n.includes('grid') || n.includes('sketch') || n.includes('boceto') || n.includes('axis') || n.includes('eje') || n.includes('annotation')) {
+              return;
+            }
 
-    if (isGlbOrGltf) {
-      const loader = new GLTFLoader();
-      loader.load(objectUrl, (gltf) => onParseComplete(gltf.scene), undefined, onParseError);
-    } else if (isObj) {
-      import('three/examples/jsm/loaders/OBJLoader').then(({ OBJLoader }) => {
-        const loader = new OBJLoader();
-        loader.load(objectUrl, (group) => onParseComplete(group), undefined, onParseError);
-      }).catch(onParseError);
+            cleanName = cleanName.replace(/_\d+$/, '');
+            
+            if (/^(Sólido|Solid|Sup|Body|Cuerpo|Mesh|Node)\s*\d*$/i.test(cleanName) && child.parent) {
+              cleanName = child.parent.name || cleanName;
+              cleanName = cleanName.replace(/_\d+$/, '');
+            }
+
+            cleanName = cleanName.replace(/[-_]?(Sólido|Solid|Sup|Body|Cuerpo|Mesh|Node)\s*\d*$/i, '');
+            
+            cleanName = cleanName || `Pieza_Sin_Nombre_${child.uuid ? child.uuid.substring(0,4) : Math.random().toString(36).substring(2,6)}`;
+
+            if (!child.userData) child.userData = {};
+            child.userData.tempName = cleanName;
+
+            let gSize = new THREE.Vector3();
+            if (!child.geometry.boundingBox) child.geometry.computeBoundingBox();
+            child.geometry.boundingBox.getSize(gSize);
+            const dims = [gSize.x, gSize.y, gSize.z].sort((a,b) => a-b);
+            const sig = `${child.geometry.attributes.position.count}_${dims[0].toFixed(3)}_${dims[1].toFixed(3)}_${dims[2].toFixed(3)}`;
+            
+            if (!geometryGroups.has(sig)) geometryGroups.set(sig, []);
+            geometryGroups.get(sig).push(child);
+            
+            processedMeshes.push(child);
+          }
+        });
+
+        geometryGroups.forEach((meshes, sig) => {
+          if (meshes.length > 1) {
+            const names = Array.from(new Set(meshes.map(m => m.userData.tempName)));
+            if (names.length > 1) {
+               let prefix = names[0];
+               for (let i = 1; i < names.length; i++) {
+                   while (names[i].indexOf(prefix) !== 0) {
+                       prefix = prefix.substring(0, prefix.length - 1);
+                       if (!prefix) break;
+                   }
+               }
+               let lcp = prefix.replace(/[-_]$/, ''); 
+               
+               let isValid = true;
+               for (const name of names) {
+                 const remainder = name.substring(lcp.length);
+                 if (remainder.length > 0 && !/^[-_]?\d+$/.test(remainder)) {
+                   isValid = false;
+                   break;
+                 }
+               }
+               
+               if (isValid && lcp.length > 2) {
+                 meshes.forEach(m => m.userData.tempName = lcp);
+               }
+            }
+          }
+        });
+
+        processedMeshes.forEach(child => {
+            const cleanName = child.userData.tempName;
+            if (partsCount[cleanName]) {
+              partsCount[cleanName]++;
+            } else {
+              partsCount[cleanName] = 1;
+            }
+        });
+
+        const newBomItems = Object.entries(partsCount).map(([id, qty]) => ({ id, qty }));
+        
+        if (newBomItems.length === 0) {
+          setError("El archivo 3D no contiene piezas de geometría reconocibles (BOM vacío). Verifique cómo se exportó el archivo.");
+          setFileObj(null);
+          setFileName("");
+        } else {
+          setBomItems(newBomItems);
+        }
+        
+        setIsParsing(false);
+        
+        // Liberar memoria
+        URL.revokeObjectURL(objectUrl);
+      };
+
+      const onParseError = (err) => {
+        console.error("Error parseando archivo 3D:", err);
+        setError("Error al leer el archivo 3D.");
+        setIsParsing(false);
+        URL.revokeObjectURL(objectUrl);
+      };
+
+      if (isSkp || isGlbOrGltf) {
+        const loader = new GLTFLoader();
+        loader.load(objectUrl, (gltf) => onParseComplete(gltf.scene), undefined, onParseError);
+      } else if (isObj) {
+        import('three/examples/jsm/loaders/OBJLoader').then(({ OBJLoader }) => {
+          const loader = new OBJLoader();
+          loader.load(objectUrl, (group) => onParseComplete(group), undefined, onParseError);
+        }).catch(onParseError);
+      }
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Error al procesar el archivo");
+      setIsParsing(false);
+      setUploadStatus('');
+      setFileName('');
+      setFileObj(null);
     }
   };
 
