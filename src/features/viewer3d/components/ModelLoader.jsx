@@ -299,8 +299,9 @@ const ModelCore = ({ scene }) => {
       // Reutilizamos el vector en lugar de usar .clone() que mata la memoria
       _tempVec.copy(mesh.userData.originalPosition);
       if (isExploded) {
-        // Expandimos radialmente
-        _tempVec.multiplyScalar(2.0); 
+        // Expandimos radialmente pero solo en X y Z para no arruinar el sorting Y
+        _tempVec.x *= 1.5; 
+        _tempVec.z *= 1.5;
       }
 
       if (isVisible) {

@@ -119,8 +119,17 @@ export const ViewerScene = () => {
       {/* Canvas 3D (Desarrollador B) */}
       <Canvas 
         shadows={false} 
-        dpr={1} 
-        gl={{ antialias: false, powerPreference: "high-performance", precision: "lowp" }} 
+        dpr={[0.5, 1]} // Dynamic resolution down to 0.5x on slow devices
+        frameloop="demand" // Only render when things change, saves massive CPU/GPU
+        gl={{ 
+          antialias: false, 
+          powerPreference: "low-power", // Avoid high-performance forcing which crashes some old phones
+          precision: "lowp",
+          alpha: false, // Disabling alpha channel saves memory
+          depth: true,
+          stencil: false, // Disabling stencil buffer saves memory
+          preserveDrawingBuffer: false
+        }} 
       >
         {isOrthographic ? (
           <OrthographicCamera makeDefault position={[6, 5, 8]} zoom={45} near={-100} far={1000} />
@@ -138,8 +147,7 @@ export const ViewerScene = () => {
           makeDefault 
           minPolarAngle={0} 
           maxPolarAngle={Math.PI} // Permite rotar completamente por debajo del modelo
-          enableDamping
-          dampingFactor={0.05}
+          makeDefault
         />
 
         {/* ViewCube interactivo estilo CAD (arriba a la derecha) */}
