@@ -136,9 +136,9 @@ export const ViewerScene = () => {
         }} 
       >
         {isOrthographic ? (
-          <OrthographicCamera makeDefault position={[6, 5, 8]} zoom={45} near={-100} far={1000} />
+          <OrthographicCamera makeDefault position={[6, 5, 8]} zoom={45} near={-1000} far={100000} />
         ) : (
-          <PerspectiveCamera makeDefault position={[6, 5, 8]} fov={45} near={0.1} far={1000} />
+          <PerspectiveCamera makeDefault position={[6, 5, 8]} fov={45} near={0.01} far={100000} />
         )}
 
         <XR>

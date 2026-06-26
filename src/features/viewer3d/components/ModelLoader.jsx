@@ -268,6 +268,32 @@ const ModelCore = ({ scene }) => {
       uniqueZ = filterClose(uniqueZ, 0.3);
       
       useViewerStore.getState().setGridLines({ x: uniqueX, z: uniqueZ });
+
+      // === ELIMINAR VÉRTICES BASURA (OUTLIERS) ===
+      // SketchUp a menudo exporta vértices a kilómetros de distancia que arruinan la cámara.
+      if (uniqueX.length > 1 && uniqueZ.length > 1) {
+        const coreWidth = uniqueX[uniqueX.length - 1] - uniqueX[0];
+        const coreDepth = uniqueZ[uniqueZ.length - 1] - uniqueZ[0];
+        
+        // Tolerancia: 3 veces el tamaño del núcleo
+        const marginX = Math.max(coreWidth * 3, 5);
+        const marginZ = Math.max(coreDepth * 3, 5);
+        
+        const minX = uniqueX[0] - marginX;
+        const maxX = uniqueX[uniqueX.length - 1] + marginX;
+        const minZ = uniqueZ[0] - marginZ;
+        const maxZ = uniqueZ[uniqueZ.length - 1] + marginZ;
+
+        processedMeshes.forEach(m => {
+          const mBox = new THREE.Box3().setFromObject(m);
+          if (mBox.min.x > maxX || mBox.max.x < minX || mBox.min.z > maxZ || mBox.max.z < minZ) {
+            // Es un outlier extremo, remover de la escena
+            if (m.parent) {
+              m.parent.remove(m);
+            }
+          }
+        });
+      }
     }
 
     // Aplicar la opacidad almacenada en el estado a los nuevos materiales
