@@ -45,6 +45,8 @@ export const RenderPage = () => {
     fetchGame();
   }, [juegoId]);
 
+  const [lightIntensity, setLightIntensity] = useState(1.5);
+
   return (
     <div className="w-screen h-screen overflow-hidden bg-slate-900 relative">
       {/* Header Overlay */}
@@ -54,11 +56,24 @@ export const RenderPage = () => {
           className="pointer-events-auto bg-slate-800/80 hover:bg-slate-700/80 text-white p-3 rounded-full backdrop-blur shadow-lg transition-colors flex items-center gap-2"
         >
           <ArrowLeft className="w-5 h-5" />
-          <span className="font-semibold pr-2">Volver</span>
+          <span className="font-semibold pr-2 hidden md:inline">Volver</span>
         </button>
         
+        {/* Light Controls */}
+        <div className="pointer-events-auto bg-slate-800/80 p-3 rounded-2xl backdrop-blur shadow-lg border border-slate-700 flex items-center gap-3">
+           <span className="text-slate-300 text-xs font-bold uppercase tracking-wider">Luz</span>
+           <input 
+              type="range" 
+              min="0" max="3" step="0.1" 
+              value={lightIntensity} 
+              onChange={(e) => setLightIntensity(parseFloat(e.target.value))}
+              className="w-24 md:w-32 accent-sky-400"
+           />
+           <span className="text-white text-xs font-mono w-6">{lightIntensity.toFixed(1)}</span>
+        </div>
+
         {gameData && (
-          <div className="bg-slate-800/80 text-white px-4 py-2 rounded-full backdrop-blur shadow-lg border border-slate-700">
+          <div className="pointer-events-auto bg-slate-800/80 text-white px-4 py-2 rounded-full backdrop-blur shadow-lg border border-slate-700 hidden md:block">
             <span className="font-bold">{gameData.name}</span>
             <span className="text-slate-400 text-sm ml-2">Render Mode</span>
           </div>
@@ -67,7 +82,7 @@ export const RenderPage = () => {
 
       {/* Main 3D Canvas */}
       {modelUrl ? (
-        <RenderScene modelUrl={modelUrl} />
+        <RenderScene modelUrl={modelUrl} lightIntensity={lightIntensity} />
       ) : (
         <div className="w-full h-full flex flex-col items-center justify-center text-white">
           {error ? (
