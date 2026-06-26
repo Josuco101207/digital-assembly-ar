@@ -1,6 +1,6 @@
 import React, { Suspense, useRef, useState, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Center, GizmoHelper, GizmoViewcube, PerspectiveCamera, OrthographicCamera } from '@react-three/drei';
+import { OrbitControls, Center, Bounds, GizmoHelper, GizmoViewcube, PerspectiveCamera, OrthographicCamera } from '@react-three/drei';
 import { ARButton, XR, useXR, useHitTest, Interactive } from '@react-three/xr';
 import { ModelLoader } from './components/ModelLoader';
 import { LoadingOverlay } from './components/LoadingOverlay';
@@ -60,9 +60,11 @@ const SceneContent = ({ modelUrl }) => {
               <ambientLight intensity={1} />
               <directionalLight position={[10, 10, 10]} intensity={1.5} castShadow />
               {showGrid && <CoordinateGrid />}
-              <Center top onCentered={handleCentered}>
-                {modelUrl && <ModelLoader url={modelUrl} />}
-              </Center>
+              <Bounds fit clip observe margin={1.2}>
+                <Center top onCentered={handleCentered}>
+                  {modelUrl && <ModelLoader url={modelUrl} />}
+                </Center>
+              </Bounds>
             </group>
           ) : (
             <mesh ref={reticleRef} rotation-x={-Math.PI / 2}>
@@ -82,9 +84,11 @@ const SceneContent = ({ modelUrl }) => {
       <directionalLight position={[10, 10, 10]} intensity={1.2} castShadow={false} />
       <directionalLight position={[-10, 10, -10]} intensity={0.5} castShadow={false} />
       {showGrid && <CoordinateGrid />}
-      <Center top onCentered={handleCentered}>
-        {modelUrl && <ModelLoader url={modelUrl} />}
-      </Center>
+      <Bounds fit clip observe margin={1.2}>
+        <Center top onCentered={handleCentered}>
+          {modelUrl && <ModelLoader url={modelUrl} />}
+        </Center>
+      </Bounds>
     </>
   );
 };

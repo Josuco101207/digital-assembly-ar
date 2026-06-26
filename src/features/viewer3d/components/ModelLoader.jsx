@@ -72,6 +72,7 @@ const ModelCore = ({ scene }) => {
       }
 
       if (child.isMesh) {
+        child.matrixAutoUpdate = false;
         // Ocultar mallas que sean claramente textos o grillas por nombre
         const n = (child.name || "").toLowerCase();
         if (n.includes('text') || n.includes('grid') || n.includes('sketch') || n.includes('boceto') || n.includes('axis') || n.includes('eje') || n.includes('annotation')) {
@@ -306,17 +307,23 @@ const ModelCore = ({ scene }) => {
 
       if (isVisible) {
         mesh.visible = true;
-        // Solo calcular lerp si aún no ha llegado a su destino (mejora rendimiento CPU)
         if (mesh.position.distanceToSquared(_tempVec) > 0.0001) {
           mesh.position.lerp(_tempVec, delta * 5);
+          mesh.updateMatrix();
         } else {
-          mesh.position.copy(_tempVec); // Fijar si ya llegó
+          if (mesh.position.distanceToSquared(_tempVec) > 0) {
+            mesh.position.copy(_tempVec); // Fijar si ya llegó
+            mesh.updateMatrix();
+          }
         }
       } else {
         mesh.visible = false;
         // La pieza espera arriba en el aire
         _tempVec.y += 10;
-        mesh.position.copy(_tempVec);
+        if (mesh.position.distanceToSquared(_tempVec) > 0) {
+          mesh.position.copy(_tempVec);
+          mesh.updateMatrix();
+        }
       }
 
       // 3. Feedback Visual de Selección OPTIMIZADO con Distinción Principal/Secundaria
