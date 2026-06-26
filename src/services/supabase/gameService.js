@@ -43,12 +43,45 @@ export const uploadModelChunked = async (file, setUploadStatus) => {
   return `chunked://${uniquePrefix}|${totalChunks}`;
 };
 
+import localforage from 'localforage';
+
+const fetchChunkWithRetry = async (chunkName, maxRetries = 3) => {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const { data, error } = await supabase.storage
+        .from('models')
+        .download(chunkName);
+      
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.warn(`Intento ${attempt} fallido para ${chunkName}:`, err);
+      if (attempt === maxRetries) throw err;
+      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+    }
+  }
+};
+
 export const downloadModelChunked = async (modelUrl, setUploadStatus) => {
   // modelUrl format: chunked://prefix|totalChunks
   const dataString = modelUrl.split('chunked://')[1];
   const [prefix, totalChunksStr] = dataString.split('|');
   const totalChunks = parseInt(totalChunksStr, 10);
   
+  // Revisar caché local primero
+  const cacheKey = `model_cache_${prefix}`;
+  try {
+    const cachedData = await localforage.getItem(cacheKey);
+    if (cachedData) {
+      if (setUploadStatus) setUploadStatus('Cargando desde caché local...');
+      const decompressedData = fflate.gunzipSync(cachedData);
+      const blob = new Blob([decompressedData.buffer]);
+      return URL.createObjectURL(blob);
+    }
+  } catch(e) {
+    console.warn("Error leyendo caché:", e);
+  }
+
   const chunks = [];
   let totalLength = 0;
   
@@ -56,22 +89,19 @@ export const downloadModelChunked = async (modelUrl, setUploadStatus) => {
     if (setUploadStatus) setUploadStatus(`Descargando fragmento ${i + 1} de ${totalChunks}...`);
     const chunkName = `${prefix}.part${i}`;
     
-    const { data, error } = await supabase.storage
-      .from('models')
-      .download(chunkName);
-      
-    if (error) {
+    try {
+      const data = await fetchChunkWithRetry(chunkName);
+      const arrayBuffer = await data.arrayBuffer();
+      const uint8Arr = new Uint8Array(arrayBuffer);
+      chunks.push(uint8Arr);
+      totalLength += uint8Arr.length;
+    } catch (error) {
       console.error(`Error descargando chunk ${i}:`, error);
       throw new Error(`Fallo al descargar el fragmento ${i + 1}`);
     }
-    
-    const arrayBuffer = await data.arrayBuffer();
-    const uint8Arr = new Uint8Array(arrayBuffer);
-    chunks.push(uint8Arr);
-    totalLength += uint8Arr.length;
   }
   
-  if (setUploadStatus) setUploadStatus('Uniendo y descomprimiendo archivo 3D...');
+  if (setUploadStatus) setUploadStatus('Uniendo y procesando...');
   
   // Unir los fragmentos
   const combinedData = new Uint8Array(totalLength);
@@ -81,15 +111,19 @@ export const downloadModelChunked = async (modelUrl, setUploadStatus) => {
     offset += chunk.length;
   }
   
-  // OPTIMIZACIÓN EXTREMA: Liberar arreglo de chunks de la RAM antes de descomprimir
+  // Liberar arreglo de chunks de la RAM antes de descomprimir
   chunks.length = 0;
   
+  // Guardar en caché asíncronamente
+  try {
+    localforage.setItem(cacheKey, combinedData).catch(e => console.warn("Error guardando en caché:", e));
+  } catch (e) {}
+
   // Descomprimir
+  if (setUploadStatus) setUploadStatus('Descomprimiendo modelo 3D...');
   const decompressedData = fflate.gunzipSync(combinedData);
   
-  // Crear Blob URL (le pasamos el array buffer directamente)
   const blob = new Blob([decompressedData.buffer]);
-  
   return URL.createObjectURL(blob);
 };
 
