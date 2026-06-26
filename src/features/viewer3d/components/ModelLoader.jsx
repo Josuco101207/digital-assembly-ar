@@ -244,7 +244,6 @@ const ModelCore = ({ scene }) => {
             wasSelected: false
           };
       });
-    });
 
     // === ALGORITMO DE CLUSTERING ESPACIAL (BOTTOM-UP) ===
     if (processedMeshes.length > 0) {
