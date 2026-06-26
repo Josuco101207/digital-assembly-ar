@@ -267,34 +267,59 @@ const ModelCore = ({ scene }) => {
       uniqueX = filterClose(uniqueX, 0.3);
       uniqueZ = filterClose(uniqueZ, 0.3);
       
-      // === ALGORITMO DE CLUSTERING DE SUB-MODELOS ===
-      const subModelsX = [];
-      let currentSubX = [];
-      for(let i=0; i<uniqueX.length; i++) {
-        if(i === 0) currentSubX.push(uniqueX[i]);
-        else {
-          const gap = uniqueX[i] - uniqueX[i-1];
-          // Tolerancia de 20 unidades de gap
-          if (gap > 20) {
-             subModelsX.push(currentSubX);
-             currentSubX = [uniqueX[i]];
-          } else {
-             currentSubX.push(uniqueX[i]);
-          }
-        }
-      }
-      if(currentSubX.length > 0) subModelsX.push(currentSubX);
+      // === ALGORITMO DE CLUSTERING GEOMÉTRICO (DISTANCIA 3D) ===
+      // Pre-calcular cajas para cada malla
+      processedMeshes.forEach(m => {
+          m.userData.box = new THREE.Box3().setFromObject(m);
+      });
+
+      let clusters = [];
+      const DISTANCE_TOLERANCE = 100; // Tolerancia grande para agrupar piezas sueltas de un mismo modelo
+
+      processedMeshes.forEach(mesh => {
+         const meshBox = mesh.userData.box;
+         if (meshBox.isEmpty()) return;
+
+         const expandedBox = meshBox.clone().expandByScalar(DISTANCE_TOLERANCE);
+         const overlappingClusters = clusters.filter(c => c.box.intersectsBox(expandedBox));
+         
+         if (overlappingClusters.length > 0) {
+            const mainCluster = overlappingClusters[0];
+            mainCluster.meshes.push(mesh);
+            mainCluster.box.union(meshBox);
+            
+            for (let i = 1; i < overlappingClusters.length; i++) {
+               mainCluster.meshes.push(...overlappingClusters[i].meshes);
+               mainCluster.box.union(overlappingClusters[i].box);
+               clusters = clusters.filter(c => c !== overlappingClusters[i]);
+            }
+         } else {
+            clusters.push({
+               meshes: [mesh],
+               box: meshBox.clone()
+            });
+         }
+      });
+      
+      // Filtrar clusters muy pequeños (basura/outliers de sketchup)
+      clusters = clusters.filter(c => c.meshes.length > 2);
+      
+      // Ordenar clusters por cantidad de mallas de mayor a menor (los más grandes primero)
+      clusters.sort((a, b) => b.meshes.length - a.meshes.length);
 
       let detectedSubModels = [];
-      if (subModelsX.length > 1) {
-         detectedSubModels = subModelsX.map((arr, idx) => {
-            const minX = arr[0] - 5;
-            const maxX = arr[arr.length - 1] + 5;
+      if (clusters.length > 1) {
+         detectedSubModels = clusters.map((c, idx) => {
+            // Asignar ID a las mallas de este cluster
+            c.meshes.forEach(m => m.userData.subModelId = `sub_${idx}`);
             return {
                id: `sub_${idx}`,
-               name: `Modelo ${idx + 1}`,
-               minX, maxX,
-               uniqueX: arr
+               name: `Módulo ${idx + 1} (${c.meshes.length} pzs)`,
+               box: c.box,
+               minX: c.box.min.x,
+               maxX: c.box.max.x,
+               minZ: c.box.min.z,
+               maxZ: c.box.max.z
             }
          });
       }
@@ -331,41 +356,29 @@ const ModelCore = ({ scene }) => {
       const { pMeshes, detectedSubModels, allUniqueX, allUniqueZ } = memoData;
       
       const activeSub = detectedSubModels.find(s => s.id === activeSubModelId);
-
-      const coreWidth = allUniqueX[allUniqueX.length - 1] - allUniqueX[0];
-      const coreDepth = allUniqueZ[allUniqueZ.length - 1] - allUniqueZ[0];
-      const marginX = Math.max(coreWidth * 3, 5);
-      const marginZ = Math.max(coreDepth * 3, 5);
-      const minGlobalX = allUniqueX[0] - marginX;
-      const maxGlobalX = allUniqueX[allUniqueX.length - 1] + marginX;
-      const minGlobalZ = allUniqueZ[0] - marginZ;
-      const maxGlobalZ = allUniqueZ[allUniqueZ.length - 1] + marginZ;
-
+      
       pMeshes.forEach(m => {
-        const mBox = m.userData.box;
-        
-        // 1. Basura global
-        if (allUniqueX.length > 1 && allUniqueZ.length > 1) {
-            if (mBox.min.x > maxGlobalX || mBox.max.x < minGlobalX || mBox.min.z > maxGlobalZ || mBox.max.z < minGlobalZ) {
+         if (activeSub) {
+            if (m.userData.subModelId !== activeSub.id) {
                if (m.parent) m.parent.remove(m);
-               return;
+            } else {
+               if (!m.parent && m.userData.originalParent) m.userData.originalParent.add(m);
             }
-        }
-        
-        // 2. Submodelo activo
-        if (activeSub) {
-           if (mBox.max.x < activeSub.minX || mBox.min.x > activeSub.maxX) {
-              if (m.parent) m.parent.remove(m);
-           } else {
-              if (!m.parent && m.userData.originalParent) m.userData.originalParent.add(m);
-           }
-        } else {
-           if (!m.parent && m.userData.originalParent) m.userData.originalParent.add(m);
-        }
+         } else {
+            if (!m.parent && m.userData.originalParent) m.userData.originalParent.add(m);
+         }
       });
       
       if (activeSub) {
-         useViewerStore.getState().setGridLines({ x: activeSub.uniqueX, z: allUniqueZ });
+         // Generar grid local para el submodelo
+         const stepX = (activeSub.maxX - activeSub.minX) / 5;
+         const stepZ = (activeSub.maxZ - activeSub.minZ) / 5;
+         const subX = [];
+         const subZ = [];
+         for(let i=0; i<=5; i++) subX.push(activeSub.minX + stepX * i);
+         for(let i=0; i<=5; i++) subZ.push(activeSub.minZ + stepZ * i);
+         
+         useViewerStore.getState().setGridLines({ x: subX, z: subZ });
       } else {
          useViewerStore.getState().setGridLines({ x: allUniqueX, z: allUniqueZ });
       }
