@@ -4,7 +4,7 @@ import { OrbitControls, Center, Bounds, Sky, Environment, ContactShadows, Perspe
 import { PureModelLoader } from './components/PureModelLoader';
 import { LoadingOverlay } from './components/LoadingOverlay';
 
-const SceneContent = ({ modelUrl, lightIntensity = 1.5 }) => {
+const SceneContent = ({ modelUrl, lightIntensity = 1.5, activeClusterIndex, onClustersFound }) => {
   return (
     <>
       <ambientLight intensity={0.5 * (lightIntensity / 1.5)} />
@@ -25,9 +25,15 @@ const SceneContent = ({ modelUrl, lightIntensity = 1.5 }) => {
       <Sky distance={450000} sunPosition={[10, 20, 10]} inclination={0} azimuth={0.25} />
       <Environment preset="city" environmentIntensity={lightIntensity / 1.5} />
 
-      <Bounds fit margin={1.2}>
+      <Bounds key={activeClusterIndex ?? 'all'} fit margin={1.2}>
         <Center top>
-          {modelUrl && <PureModelLoader url={modelUrl} />}
+          {modelUrl && (
+            <PureModelLoader 
+              url={modelUrl} 
+              activeClusterIndex={activeClusterIndex} 
+              onClustersFound={onClustersFound} 
+            />
+          )}
         </Center>
       </Bounds>
 
@@ -44,7 +50,7 @@ const SceneContent = ({ modelUrl, lightIntensity = 1.5 }) => {
   );
 };
 
-export const RenderScene = ({ modelUrl, lightIntensity }) => {
+export const RenderScene = ({ modelUrl, lightIntensity, activeClusterIndex, onClustersFound }) => {
   return (
     <div className="w-full h-full bg-slate-900 relative">
       <Canvas 
@@ -56,7 +62,12 @@ export const RenderScene = ({ modelUrl, lightIntensity }) => {
         <PerspectiveCamera makeDefault position={[8, 5, 8]} fov={45} near={0.1} far={10000} />
 
         <Suspense fallback={<LoadingOverlay />}>
-          <SceneContent modelUrl={modelUrl} lightIntensity={lightIntensity} />
+          <SceneContent 
+            modelUrl={modelUrl} 
+            lightIntensity={lightIntensity} 
+            activeClusterIndex={activeClusterIndex}
+            onClustersFound={onClustersFound}
+          />
         </Suspense>
 
         <OrbitControls 
