@@ -5,7 +5,6 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { registerGame, uploadModelChunked } from '../../services/supabase/gameService';
 import localforage from 'localforage';
-import { convertSkpToGlb } from '../../services/asposeConvert';
 
 export const RegisterGame = () => {
   const navigate = useNavigate();
@@ -83,11 +82,20 @@ export const RegisterGame = () => {
       let finalFileObj = file;
 
       if (isSkp) {
-        // Conversión SKP a GLB
-        objectUrl = await convertSkpToGlb(file, (msg) => setUploadStatus(msg));
+        setUploadStatus('Analizando archivo de SketchUp...');
+        const openskp = await import('openskp');
+        
+        setUploadStatus('Extrayendo geometría y materiales...');
+        const arrayBuffer = await file.arrayBuffer();
+        const model = openskp.parseSkp(arrayBuffer);
+        
+        setUploadStatus('Convirtiendo a formato GLB (Web)...');
+        const glbBuffer = openskp.toGLB(model);
+        
+        const blob = new Blob([glbBuffer], { type: 'model/gltf-binary' });
+        objectUrl = URL.createObjectURL(blob);
+        
         // Generar un nuevo File para que se suba a Supabase como GLB
-        const res = await fetch(objectUrl);
-        const blob = await res.blob();
         finalFileObj = new File([blob], file.name.replace(/\.skp$/i, '.glb'), { type: 'model/gltf-binary' });
         setUploadStatus(''); // Limpiar estado de carga
       } else {
