@@ -59,125 +59,191 @@ const ModelCore = ({ scene }) => {
     });
   }, [modelOpacity]);
 
-  const memoData = useMemo(() => {
-    const processedMeshes = [];
-    const geometryGroups = new Map(); // Para LCP
-    
-    // Recorremos la escena original del GLB/GLTF
-    scene.traverse((child) => {
-      // 1. Limpieza visual: Ocultar líneas, puntos, bocetos y grillas de Inventor
-      if (child.isLine || child.isLineLoop || child.isLineSegments || child.isPoints || child.isSprite) {
-        child.visible = false;
-        return;
-      }
-
-      if (child.isMesh) {
-        child.matrixAutoUpdate = false;
-        // Ocultar mallas que sean claramente textos o grillas por nombre
-        const n = (child.name || "").toLowerCase();
-        if (n.includes('text') || n.includes('grid') || n.includes('sketch') || n.includes('boceto') || n.includes('axis') || n.includes('eje') || n.includes('annotation')) {
-          child.visible = false;
+    const memoData = useMemo(() => {
+      const processedMeshes = [];
+      const geometryGroups = new Map(); 
+      
+      // 1. Flatten the scene into a new root group to avoid hierarchy transform issues
+      const flatScene = new THREE.Group();
+      scene.updateMatrixWorld(true);
+      
+      scene.traverse((child) => {
+        if (child.isLine || child.isLineLoop || child.isLineSegments || child.isPoints || child.isSprite) {
           return;
         }
-
-        // Desactivamos sombras individuales para piezas pequeñas para no saturar la GPU en tablets
-        child.castShadow = false;
-        child.receiveShadow = false;
-
-        // Optimizaciones de Memoria Extremas para Tablets
-        if (child.geometry.attributes.uv) child.geometry.deleteAttribute('uv');
-        if (child.geometry.attributes.color) child.geometry.deleteAttribute('color');
-
-        if (child.material) {
-           if (!materialCache.has(child.material)) {
-              const baseColor = child.material.color || new THREE.Color(0xcccccc);
-              const newMat = new THREE.MeshLambertMaterial({ 
-                 color: baseColor,
-                 side: child.material.side !== undefined ? child.material.side : THREE.DoubleSide
-              });
-              materialCache.set(child.material, newMat);
-           }
-           child.material = materialCache.get(child.material);
-        } else {
-           child.material = defaultLambert;
-        }
-
-        // LIMPIEZA DE SUFIJOS BÁSICA
-        let cleanName = child.name || "";
-        cleanName = cleanName.replace(/_\d+$/, '');
-        
-        if (/^(Sólido|Solid|Sup|Body|Cuerpo|Mesh|Node)\s*\d*$/i.test(cleanName) && child.parent) {
-          cleanName = child.parent.name || cleanName;
-          cleanName = cleanName.replace(/_\d+$/, '');
-        }
-        
-        cleanName = cleanName.replace(/[-_]?(Sólido|Solid|Sup|Body|Cuerpo|Mesh|Node)\s*\d*$/i, '');
-        
-        cleanName = cleanName || `Pieza_Sin_Nombre_${child.uuid ? child.uuid.substring(0,4) : ""}`;
-
-        child.userData.tempName = cleanName;
-
-        // Computar firma geométrica para agrupar clones perfectos y evitar bugs de Inventor
-        let gSize = new THREE.Vector3();
-        if (!child.geometry.boundingBox) child.geometry.computeBoundingBox();
-        child.geometry.boundingBox.getSize(gSize);
-        const dims = [gSize.x, gSize.y, gSize.z].sort((a,b) => a-b);
-        const sig = `${child.geometry.attributes.position.count}_${dims[0].toFixed(3)}_${dims[1].toFixed(3)}_${dims[2].toFixed(3)}`;
-        
-        if (!geometryGroups.has(sig)) geometryGroups.set(sig, []);
-        geometryGroups.get(sig).push(child);
-
-        processedMeshes.push(child);
-      }
-    });
-
-    // === NORMALIZACIÓN INTELIGENTE DE NOMBRES (LCP) ===
-    // Resuelve el bug de Inventor donde borra los ":" y une los números de instancia al nombre base
-    geometryGroups.forEach((meshes, sig) => {
-      if (meshes.length > 1) {
-        const names = Array.from(new Set(meshes.map(m => m.userData.tempName)));
-        if (names.length > 1) {
-           let prefix = names[0];
-           for (let i = 1; i < names.length; i++) {
-               while (names[i].indexOf(prefix) !== 0) {
-                   prefix = prefix.substring(0, prefix.length - 1);
-                   if (!prefix) break;
-               }
-           }
-           let lcp = prefix.replace(/[-_]$/, ''); 
-           
-           let isValid = true;
-           for (const name of names) {
-             const remainder = name.substring(lcp.length);
-             // El remainder debe ser solo dígitos o separador+dígitos
-             if (remainder.length > 0 && !/^[-_]?\d+$/.test(remainder)) {
-               isValid = false;
-               break;
+  
+        if (child.isMesh) {
+          const n = (child.name || "").toLowerCase();
+          if (n.includes('text') || n.includes('grid') || n.includes('sketch') || n.includes('boceto') || n.includes('axis') || n.includes('eje') || n.includes('annotation')) {
+            return;
+          }
+  
+          const clone = child.clone();
+          child.getWorldPosition(clone.position);
+          child.getWorldQuaternion(clone.quaternion);
+          child.getWorldScale(clone.scale);
+          
+          clone.castShadow = false;
+          clone.receiveShadow = false;
+          clone.matrixAutoUpdate = true; // Temporarily true for packing
+  
+          if (clone.geometry.attributes.uv) clone.geometry.deleteAttribute('uv');
+          if (clone.geometry.attributes.color) clone.geometry.deleteAttribute('color');
+  
+          if (clone.material) {
+             if (!materialCache.has(clone.material)) {
+                const baseColor = clone.material.color || new THREE.Color(0xcccccc);
+                const newMat = new THREE.MeshLambertMaterial({ 
+                   color: baseColor,
+                   side: clone.material.side !== undefined ? clone.material.side : THREE.DoubleSide
+                });
+                materialCache.set(clone.material, newMat);
              }
-           }
+             clone.material = materialCache.get(clone.material);
+          } else {
+             clone.material = defaultLambert;
+          }
+  
+          let cleanName = child.name || "";
+          cleanName = cleanName.replace(/_\d+$/, '');
+          
+          if (/^(Sólido|Solid|Sup|Body|Cuerpo|Mesh|Node)\s*\d*$/i.test(cleanName) && child.parent) {
+            cleanName = child.parent.name || cleanName;
+            cleanName = cleanName.replace(/_\d+$/, '');
+          }
+          
+          cleanName = cleanName.replace(/[-_]?(Sólido|Solid|Sup|Body|Cuerpo|Mesh|Node)\s*\d*$/i, '');
+          cleanName = cleanName || `Pieza_Sin_Nombre_${child.uuid ? child.uuid.substring(0,4) : ""}`;
+  
+          clone.userData.tempName = cleanName;
+          clone.userData.originalParentName = child.parent ? child.parent.name : '';
+  
+          flatScene.add(clone);
+          processedMeshes.push(clone);
+        }
+      });
+  
+      // 2. Spatial Clustering to pack structures closer together
+      if (processedMeshes.length > 0) {
+        processedMeshes.forEach(m => {
+           m.updateMatrixWorld(true);
+           m.userData.packBox = new THREE.Box3().setFromObject(m);
+        });
+  
+        let packClusters = [];
+        const PACK_TOLERANCE = 100; // Si están a más de 100 unidades, son estructuras separadas
+        
+        processedMeshes.forEach(mesh => {
+           const meshBox = mesh.userData.packBox;
+           if (meshBox.isEmpty()) return;
+  
+           const expandedBox = meshBox.clone().expandByScalar(PACK_TOLERANCE);
+           const overlapping = packClusters.filter(c => c.box.intersectsBox(expandedBox));
            
-           if (isValid && lcp.length > 2) {
-             meshes.forEach(m => m.userData.tempName = lcp);
+           if (overlapping.length > 0) {
+              const main = overlapping[0];
+              main.meshes.push(mesh);
+              main.box.union(meshBox);
+              for (let i = 1; i < overlapping.length; i++) {
+                 main.meshes.push(...overlapping[i].meshes);
+                 main.box.union(overlapping[i].box);
+                 packClusters = packClusters.filter(c => c !== overlapping[i]);
+              }
+           } else {
+              packClusters.push({ meshes: [mesh], box: meshBox.clone() });
            }
+        });
+  
+        if (packClusters.length > 1) {
+          packClusters.sort((a,b) => b.meshes.length - a.meshes.length);
+          let currentX = 0;
+          const SPACING = 15; // 15 unidades de separación real
+  
+          packClusters.forEach((cluster, idx) => {
+             const center = cluster.box.getCenter(new THREE.Vector3());
+             const size = cluster.box.getSize(new THREE.Vector3());
+             
+             if (idx === 0) {
+                const shiftX = -center.x;
+                const shiftZ = -center.z;
+                cluster.meshes.forEach(m => {
+                   m.position.x += shiftX;
+                   m.position.z += shiftZ;
+                   m.updateMatrixWorld(true);
+                });
+                currentX = (size.x / 2) + SPACING;
+             } else {
+                const targetX = currentX + (size.x / 2);
+                const shiftX = targetX - center.x;
+                const shiftZ = -center.z;
+                cluster.meshes.forEach(m => {
+                   m.position.x += shiftX;
+                   m.position.z += shiftZ;
+                   m.updateMatrixWorld(true);
+                });
+                currentX = targetX + (size.x / 2) + SPACING;
+             }
+          });
         }
       }
-    });
-
-    // Inyectamos los metadatos finales
-    processedMeshes.forEach(child => {
-        const cleanName = child.userData.tempName;
-        const box = new THREE.Box3().setFromObject(child);
-        const bottomY = box.min.y;
-
-        child.userData = {
-          id: cleanName,
-          rawId: child.name,
-          bottomY: bottomY,
-          requiredLevel: 1,
-          originalPosition: child.position.clone(),
-          originalMaterial: child.material,
-          wasSelected: false
-        };
+  
+      // 3. Update signatures and standard metadata after packing
+      processedMeshes.forEach(child => {
+          let gSize = new THREE.Vector3();
+          if (!child.geometry.boundingBox) child.geometry.computeBoundingBox();
+          child.geometry.boundingBox.getSize(gSize);
+          const dims = [gSize.x, gSize.y, gSize.z].sort((a,b) => a-b);
+          const sig = `${child.geometry.attributes.position.count}_${dims[0].toFixed(3)}_${dims[1].toFixed(3)}_${dims[2].toFixed(3)}`;
+          
+          if (!geometryGroups.has(sig)) geometryGroups.set(sig, []);
+          geometryGroups.get(sig).push(child);
+      });
+  
+      // LCP Normalization
+      geometryGroups.forEach((meshes, sig) => {
+        if (meshes.length > 1) {
+          const names = Array.from(new Set(meshes.map(m => m.userData.tempName)));
+          if (names.length > 1) {
+             let prefix = names[0];
+             for (let i = 1; i < names.length; i++) {
+                 while (names[i].indexOf(prefix) !== 0) {
+                     prefix = prefix.substring(0, prefix.length - 1);
+                     if (!prefix) break;
+                 }
+             }
+             let lcp = prefix.replace(/[-_]$/, ''); 
+             
+             let isValid = true;
+             for (const name of names) {
+               const remainder = name.substring(lcp.length);
+               if (remainder.length > 0 && !/^[-_]?\d+$/.test(remainder)) {
+                 isValid = false;
+                 break;
+               }
+             }
+             
+             if (isValid && lcp.length > 2) {
+               meshes.forEach(m => m.userData.tempName = lcp);
+             }
+          }
+        }
+      });
+  
+      processedMeshes.forEach(child => {
+          child.matrixAutoUpdate = false; // Freeze again
+          const cleanName = child.userData.tempName;
+          const box = new THREE.Box3().setFromObject(child);
+          
+          child.userData = {
+            id: cleanName,
+            rawId: child.name,
+            bottomY: box.min.y,
+            requiredLevel: 1,
+            originalPosition: child.position.clone(),
+            originalMaterial: child.material,
+            wasSelected: false
+          };
+      });
     });
 
     // === ALGORITMO DE CLUSTERING ESPACIAL (BOTTOM-UP) ===
@@ -488,10 +554,10 @@ const ModelCore = ({ scene }) => {
   };
 
   return (
-    <primitive 
-      object={scene} 
-      onClick={handleClick}
-      onPointerMissed={handlePointerMissed}
-    />
+    <group ref={groupRef} dispose={null} onClick={handleClick} onPointerMissed={handlePointerMissed}>
+      {memoData.pMeshes.map((mesh) => (
+         <primitive key={mesh.uuid} object={mesh} />
+      ))}
+    </group>
   );
 };

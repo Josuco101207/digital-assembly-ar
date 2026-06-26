@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { RenderScene } from './RenderScene';
 import { getGameById, downloadModelChunked } from '../../services/supabase/gameService';
-import { ArrowLeft, Loader2, Layers } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 
 export const RenderPage = () => {
   const { juegoId } = useParams();
@@ -13,9 +13,6 @@ export const RenderPage = () => {
   const [gameData, setGameData] = useState(null);
   const [downloadStatus, setDownloadStatus] = useState('');
   const [error, setError] = useState('');
-  
-  const [numClusters, setNumClusters] = useState(0);
-  const [activeClusterIndex, setActiveClusterIndex] = useState(0);
 
   useEffect(() => {
     const fetchGame = async () => {
@@ -25,8 +22,6 @@ export const RenderPage = () => {
         setModelUrl(null);
         setGameData(null);
         setError('');
-        setNumClusters(0);
-        setActiveClusterIndex(0);
         
         try {
           const game = await getGameById(juegoId);
@@ -85,47 +80,9 @@ export const RenderPage = () => {
         )}
       </div>
 
-      {/* Tabs para Submodelos (si hay más de 1) */}
-      {numClusters > 1 && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-auto">
-          <div className="bg-slate-800/90 backdrop-blur shadow-2xl border border-slate-700 p-1.5 rounded-full flex gap-1 items-center max-w-[90vw] overflow-x-auto no-scrollbar">
-            {Array.from({ length: numClusters }).map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setActiveClusterIndex(idx)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-all ${
-                  activeClusterIndex === idx 
-                    ? 'bg-sky-500 text-white shadow-lg' 
-                    : 'text-slate-300 hover:text-white hover:bg-slate-700'
-                }`}
-              >
-                <Layers className="w-4 h-4" />
-                <span className="font-medium text-sm">Modelo {idx + 1}</span>
-              </button>
-            ))}
-            <div className="w-px h-6 bg-slate-600 mx-1"></div>
-            <button
-              onClick={() => setActiveClusterIndex(null)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-all ${
-                activeClusterIndex === null
-                  ? 'bg-purple-500 text-white shadow-lg' 
-                  : 'text-slate-300 hover:text-white hover:bg-slate-700'
-              }`}
-            >
-              <span className="font-medium text-sm">Ver Todo</span>
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Main 3D Canvas */}
       {modelUrl ? (
-        <RenderScene 
-           modelUrl={modelUrl} 
-           lightIntensity={lightIntensity} 
-           activeClusterIndex={activeClusterIndex} 
-           onClustersFound={setNumClusters} 
-        />
+        <RenderScene modelUrl={modelUrl} lightIntensity={lightIntensity} />
       ) : (
         <div className="w-full h-full flex flex-col items-center justify-center text-white">
           {error ? (
