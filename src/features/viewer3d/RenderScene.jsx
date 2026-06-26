@@ -12,7 +12,7 @@ const SceneContent = ({ modelUrl, lightIntensity = 1.5 }) => {
         position={[10, 20, 10]}
         intensity={2.5 * (lightIntensity / 1.5)}
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={[1024, 1024]}
         shadow-camera-left={-20}
         shadow-camera-right={20}
         shadow-camera-top={20}
@@ -29,9 +29,10 @@ const SceneContent = ({ modelUrl, lightIntensity = 1.5 }) => {
       </Bounds>
 
       <ContactShadows 
-        resolution={1024} 
+        frames={1}
+        resolution={512} 
         scale={50} 
-        blur={2} 
+        blur={1.5} 
         opacity={0.5} 
         far={10} 
         color="#000000"
@@ -45,8 +46,8 @@ export const RenderScene = ({ modelUrl, lightIntensity }) => {
     <div className="w-full h-full bg-slate-900 relative">
       <Canvas 
         shadows
-        gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}
-        dpr={[1, 2]}
+        gl={{ antialias: false, alpha: false, preserveDrawingBuffer: true, powerPreference: "default" }}
+        dpr={[0.5, 1.5]}
       >
         <PerspectiveCamera makeDefault position={[8, 5, 8]} fov={45} near={0.1} far={10000} />
 
