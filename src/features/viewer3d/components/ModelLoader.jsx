@@ -443,6 +443,7 @@ const ModelCore = ({ scene }) => {
 
       return { pMeshes: processedMeshes, detectedSubModels, allUniqueX: uniqueX, allUniqueZ: uniqueZ };
     }
+    }
     
     return { pMeshes: [], detectedSubModels: [], allUniqueX: [], allUniqueZ: [] };
   }, [scene]);
