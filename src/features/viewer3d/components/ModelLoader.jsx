@@ -553,7 +553,7 @@ const ModelCore = ({ scene }) => {
   };
 
   return (
-    <group ref={groupRef} dispose={null} onClick={handleClick} onPointerMissed={handlePointerMissed}>
+    <group dispose={null} onClick={handleClick} onPointerMissed={handlePointerMissed}>
       {memoData.pMeshes.map((mesh) => (
          <primitive key={mesh.uuid} object={mesh} />
       ))}
