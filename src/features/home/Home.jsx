@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Box, Cuboid, ArrowRight, Settings, Loader2, Edit2, Check, X, Trash2 } from 'lucide-react';
+import { Search, Plus, Box, Cuboid, ArrowRight, Settings, Loader2, Edit2, Check, X, Trash2, Camera } from 'lucide-react';
 import { getGames, updateGame, deleteGame } from '../../services/supabase/gameService';
 
 export const Home = () => {
@@ -146,6 +146,13 @@ export const Home = () => {
                     <div className="flex items-center gap-3">
                       {!isEditing && (
                         <>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); navigate(`/render/${game.id}`); }}
+                            className="p-1.5 bg-slate-700/50 hover:bg-sky-500/20 rounded-lg text-slate-400 hover:text-sky-400 transition-colors"
+                            title="Modo Render Realista"
+                          >
+                            <Camera className="w-4 h-4" />
+                          </button>
                           <button 
                             onClick={(e) => handleEditClick(e, game)}
                             className="p-1.5 bg-slate-700/50 hover:bg-slate-600 rounded-lg text-slate-400 hover:text-white transition-colors"
