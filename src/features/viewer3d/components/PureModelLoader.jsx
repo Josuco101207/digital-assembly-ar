@@ -60,24 +60,80 @@ export const PureModelLoader = ({ url }) => {
          m.userData.packBox = new THREE.Box3().setFromObject(m);
       });
 
+      // 2. Density-based Spatial Clustering (Chaining-resistant)
       let packClusters = [];
       
-      const groupsMap = new Map();
-      
+      const CORE_TOLERANCE = 15;
+      let cores = [];
       meshes.forEach(mesh => {
-         const topNodeId = mesh.userData.topNodeId;
-         if (!groupsMap.has(topNodeId)) {
-            groupsMap.set(topNodeId, { meshes: [], box: new THREE.Box3() });
-         }
-         const group = groupsMap.get(topNodeId);
-         group.meshes.push(mesh);
-         if (!mesh.userData.packBox.isEmpty()) {
-            group.box.union(mesh.userData.packBox);
+         const meshBox = mesh.userData.packBox;
+         if (meshBox.isEmpty()) return;
+         const size = meshBox.getSize(new THREE.Vector3());
+         if (size.x > 400 || size.z > 400) return;
+
+         const expandedBox = meshBox.clone().expandByScalar(CORE_TOLERANCE);
+         const overlapping = cores.filter(c => c.box.intersectsBox(expandedBox));
+         
+         if (overlapping.length > 0) {
+            const main = overlapping[0];
+            main.meshes.push(mesh);
+            main.box.union(meshBox);
+            for (let i = 1; i < overlapping.length; i++) {
+               main.meshes.push(...overlapping[i].meshes);
+               main.box.union(overlapping[i].box);
+               cores = cores.filter(c => c !== overlapping[i]);
+            }
+         } else {
+            cores.push({ meshes: [mesh], box: meshBox.clone() });
          }
       });
+
+      let solidCores = cores.filter(c => c.meshes.length > 10);
+      if (solidCores.length === 0) solidCores = [cores.sort((a,b)=>b.meshes.length - a.meshes.length)[0]];
+
+      const MERGE_TOLERANCE = 250; 
+      let mainClusters = [];
+      solidCores.forEach(core => {
+         const expandedBox = core.box.clone().expandByScalar(MERGE_TOLERANCE);
+         const overlapping = mainClusters.filter(c => c.box.intersectsBox(expandedBox));
+         if (overlapping.length > 0) {
+            const main = overlapping[0];
+            main.meshes.push(...core.meshes);
+            main.box.union(core.box);
+            for (let i = 1; i < overlapping.length; i++) {
+               main.meshes.push(...overlapping[i].meshes);
+               main.box.union(overlapping[i].box);
+               mainClusters = mainClusters.filter(c => c !== overlapping[i]);
+            }
+         } else {
+            mainClusters.push({ meshes: [...core.meshes], box: core.box.clone() });
+         }
+      });
+
+      mainClusters.forEach(c => c.center = c.box.getCenter(new THREE.Vector3()));
       
-      packClusters = Array.from(groupsMap.values());
-      packClusters = packClusters.filter(c => c.meshes.length > 2 && !c.box.isEmpty());
+      let finalClusters = mainClusters.map(c => ({ meshes: [], box: new THREE.Box3(), center: c.center }));
+      
+      meshes.forEach(mesh => {
+          if (mesh.userData.packBox.isEmpty()) return;
+          const center = mesh.userData.packBox.getCenter(new THREE.Vector3());
+          
+          let minDist = Infinity;
+          let bestCluster = finalClusters[0];
+          
+          finalClusters.forEach(c => {
+              const dist = center.distanceTo(c.center);
+              if (dist < minDist) {
+                  minDist = dist;
+                  bestCluster = c;
+              }
+          });
+          
+          bestCluster.meshes.push(mesh);
+          bestCluster.box.union(mesh.userData.packBox);
+      });
+      
+      packClusters = finalClusters;
 
       if (packClusters.length > 1) {
         packClusters.sort((a,b) => b.meshes.length - a.meshes.length);
