@@ -59,7 +59,7 @@ const ModelCore = ({ scene }) => {
     });
   }, [modelOpacity]);
 
-  useEffect(() => {
+  const memoData = useMemo(() => {
     const processedMeshes = [];
     const geometryGroups = new Map(); // Para LCP
     
@@ -306,6 +306,9 @@ const ModelCore = ({ scene }) => {
       });
 
       return { pMeshes: processedMeshes, detectedSubModels, allUniqueX: uniqueX, allUniqueZ: uniqueZ };
+    }
+    
+    return { pMeshes: [], detectedSubModels: [], allUniqueX: [], allUniqueZ: [] };
   }, [scene]);
 
   const activeSubModelId = useViewerStore(state => state.activeSubModelId);
