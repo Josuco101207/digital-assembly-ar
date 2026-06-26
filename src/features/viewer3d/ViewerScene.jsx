@@ -60,7 +60,7 @@ const SceneContent = ({ modelUrl }) => {
               <ambientLight intensity={1} />
               <directionalLight position={[10, 10, 10]} intensity={1.5} castShadow />
               {showGrid && <CoordinateGrid />}
-              <Bounds fit clip observe margin={1.2}>
+              <Bounds fit margin={1.2}>
                 <Center top onCentered={handleCentered}>
                   {modelUrl && <ModelLoader url={modelUrl} />}
                 </Center>
@@ -84,7 +84,7 @@ const SceneContent = ({ modelUrl }) => {
       <directionalLight position={[10, 10, 10]} intensity={1.2} castShadow={false} />
       <directionalLight position={[-10, 10, -10]} intensity={0.5} castShadow={false} />
       {showGrid && <CoordinateGrid />}
-      <Bounds fit clip observe margin={1.2}>
+      <Bounds fit margin={1.2}>
         <Center top onCentered={handleCentered}>
           {modelUrl && <ModelLoader url={modelUrl} />}
         </Center>
