@@ -136,6 +136,10 @@ const ModelCore = ({ scene }) => {
         processedMeshes.forEach(mesh => {
            const meshBox = mesh.userData.packBox;
            if (meshBox.isEmpty()) return;
+           
+           // Ignorar mallas gigantescas que arruinan el clustering (ej. plano de suelo, líneas al infinito)
+           const meshSize = meshBox.getSize(new THREE.Vector3());
+           if (meshSize.x > 500 || meshSize.z > 500) return;
   
            const expandedBox = meshBox.clone().expandByScalar(PACK_TOLERANCE);
            const overlapping = packClusters.filter(c => c.box.intersectsBox(expandedBox));
@@ -153,15 +157,39 @@ const ModelCore = ({ scene }) => {
               packClusters.push({ meshes: [mesh], box: meshBox.clone() });
            }
         });
+        
+        // Asignar los meshes gigantes al cluster principal al final
+        const giantMeshes = processedMeshes.filter(mesh => {
+           const s = mesh.userData.packBox.getSize(new THREE.Vector3());
+           return s.x > 500 || s.z > 500;
+        });
+        if (giantMeshes.length > 0 && packClusters.length > 0) {
+           packClusters.sort((a,b) => b.meshes.length - a.meshes.length);
+           packClusters[0].meshes.push(...giantMeshes);
+        }
   
+        console.log("PACKING ALGORITHM: Detected", packClusters.length, "clusters.");
+
         if (packClusters.length > 1) {
           packClusters.sort((a,b) => b.meshes.length - a.meshes.length);
           let currentX = 0;
           const SPACING = 15; // 15 unidades de separación real
   
           packClusters.forEach((cluster, idx) => {
-             const center = cluster.box.getCenter(new THREE.Vector3());
-             const size = cluster.box.getSize(new THREE.Vector3());
+             // Calcular una caja robusta ignorando mallas absurdamente grandes (ej. líneas de construcción)
+             const robustBox = new THREE.Box3();
+             cluster.meshes.forEach(m => {
+                const mSize = m.userData.packBox.getSize(new THREE.Vector3());
+                if (mSize.x < 500 && mSize.z < 500 && mSize.y < 500) {
+                   robustBox.union(m.userData.packBox);
+                }
+             });
+             
+             // Si todo es gigante, fallback a la original
+             if (robustBox.isEmpty()) robustBox.copy(cluster.box);
+             
+             const center = robustBox.getCenter(new THREE.Vector3());
+             const size = robustBox.getSize(new THREE.Vector3());
              
              if (idx === 0) {
                 const shiftX = -center.x;
