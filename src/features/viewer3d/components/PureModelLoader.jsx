@@ -42,6 +42,12 @@ export const PureModelLoader = ({ url }) => {
            }
         }
         
+        let topNode = child;
+        while (topNode.parent && topNode.parent !== scene && topNode.parent.type !== 'Scene') {
+            topNode = topNode.parent;
+        }
+        clone.userData.topNodeId = topNode.uuid || topNode.name || 'Root';
+        
         flatScene.add(clone);
         meshes.push(clone);
       }
@@ -55,40 +61,23 @@ export const PureModelLoader = ({ url }) => {
       });
 
       let packClusters = [];
-      const PACK_TOLERANCE = 100;
+      
+      const groupsMap = new Map();
       
       meshes.forEach(mesh => {
-         const meshBox = mesh.userData.packBox;
-         if (meshBox.isEmpty()) return;
-
-         const meshSize = meshBox.getSize(new THREE.Vector3());
-         if (meshSize.x > 500 || meshSize.z > 500) return;
-
-         const expandedBox = meshBox.clone().expandByScalar(PACK_TOLERANCE);
-         const overlapping = packClusters.filter(c => c.box.intersectsBox(expandedBox));
-         
-         if (overlapping.length > 0) {
-            const main = overlapping[0];
-            main.meshes.push(mesh);
-            main.box.union(meshBox);
-            for (let i = 1; i < overlapping.length; i++) {
-               main.meshes.push(...overlapping[i].meshes);
-               main.box.union(overlapping[i].box);
-               packClusters = packClusters.filter(c => c !== overlapping[i]);
-            }
-         } else {
-            packClusters.push({ meshes: [mesh], box: meshBox.clone() });
+         const topNodeId = mesh.userData.topNodeId;
+         if (!groupsMap.has(topNodeId)) {
+            groupsMap.set(topNodeId, { meshes: [], box: new THREE.Box3() });
+         }
+         const group = groupsMap.get(topNodeId);
+         group.meshes.push(mesh);
+         if (!mesh.userData.packBox.isEmpty()) {
+            group.box.union(mesh.userData.packBox);
          }
       });
-
-      const giantMeshes = meshes.filter(mesh => {
-         const s = mesh.userData.packBox.getSize(new THREE.Vector3());
-         return s.x > 500 || s.z > 500;
-      });
-      if (giantMeshes.length > 0 && packClusters.length > 0) {
-         packClusters.sort((a,b) => b.meshes.length - a.meshes.length);
-         packClusters[0].meshes.push(...giantMeshes);
-      }
+      
+      packClusters = Array.from(groupsMap.values());
+      packClusters = packClusters.filter(c => c.meshes.length > 2 && !c.box.isEmpty());
 
       if (packClusters.length > 1) {
         packClusters.sort((a,b) => b.meshes.length - a.meshes.length);

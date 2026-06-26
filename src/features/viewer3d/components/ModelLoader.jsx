@@ -115,60 +115,50 @@ const ModelCore = ({ scene }) => {
           cleanName = cleanName.replace(/[-_]?(Sólido|Solid|Sup|Body|Cuerpo|Mesh|Node)\s*\d*$/i, '');
           cleanName = cleanName || `Pieza_Sin_Nombre_${child.uuid ? child.uuid.substring(0,4) : ""}`;
   
+          let topNode = child;
+          // Subir hasta que el padre sea el 'scene' original o no tenga padre
+          while (topNode.parent && topNode.parent !== scene && topNode.parent.type !== 'Scene') {
+              topNode = topNode.parent;
+          }
+          
           clone.userData.tempName = cleanName;
           clone.userData.originalParentName = child.parent ? child.parent.name : '';
+          clone.userData.topNodeId = topNode.uuid || topNode.name || 'Root';
   
           flatScene.add(clone);
           processedMeshes.push(clone);
         }
       });
   
-      // 2. Spatial Clustering to pack structures closer together
+      // 2. Semantic/Spatial Clustering to pack structures closer together
+      let packClusters = [];
       if (processedMeshes.length > 0) {
         processedMeshes.forEach(m => {
            m.updateMatrixWorld(true);
            m.userData.packBox = new THREE.Box3().setFromObject(m);
         });
   
-        let packClusters = [];
-        const PACK_TOLERANCE = 100; // Si están a más de 100 unidades, son estructuras separadas
+        // Agrupar por nodo principal (Top-Level Node) del GLTF
+        const groupsMap = new Map();
         
         processedMeshes.forEach(mesh => {
-           const meshBox = mesh.userData.packBox;
-           if (meshBox.isEmpty()) return;
-           
-           // Ignorar mallas gigantescas que arruinan el clustering (ej. plano de suelo, líneas al infinito)
-           const meshSize = meshBox.getSize(new THREE.Vector3());
-           if (meshSize.x > 500 || meshSize.z > 500) return;
-  
-           const expandedBox = meshBox.clone().expandByScalar(PACK_TOLERANCE);
-           const overlapping = packClusters.filter(c => c.box.intersectsBox(expandedBox));
-           
-           if (overlapping.length > 0) {
-              const main = overlapping[0];
-              main.meshes.push(mesh);
-              main.box.union(meshBox);
-              for (let i = 1; i < overlapping.length; i++) {
-                 main.meshes.push(...overlapping[i].meshes);
-                 main.box.union(overlapping[i].box);
-                 packClusters = packClusters.filter(c => c !== overlapping[i]);
-              }
-           } else {
-              packClusters.push({ meshes: [mesh], box: meshBox.clone() });
+           const topNodeId = mesh.userData.topNodeId;
+           if (!groupsMap.has(topNodeId)) {
+              groupsMap.set(topNodeId, { meshes: [], box: new THREE.Box3() });
+           }
+           const group = groupsMap.get(topNodeId);
+           group.meshes.push(mesh);
+           if (!mesh.userData.packBox.isEmpty()) {
+              group.box.union(mesh.userData.packBox);
            }
         });
         
-        // Asignar los meshes gigantes al cluster principal al final
-        const giantMeshes = processedMeshes.filter(mesh => {
-           const s = mesh.userData.packBox.getSize(new THREE.Vector3());
-           return s.x > 500 || s.z > 500;
-        });
-        if (giantMeshes.length > 0 && packClusters.length > 0) {
-           packClusters.sort((a,b) => b.meshes.length - a.meshes.length);
-           packClusters[0].meshes.push(...giantMeshes);
-        }
-  
-        console.log("PACKING ALGORITHM: Detected", packClusters.length, "clusters.");
+        packClusters = Array.from(groupsMap.values());
+        
+        // Filtrar basuras (clusters con menos de 3 mallas o vacíos)
+        packClusters = packClusters.filter(c => c.meshes.length > 2 && !c.box.isEmpty());
+
+        console.log("PACKING ALGORITHM: Detected", packClusters.length, "semantic clusters based on SketchUp components.");
 
         if (packClusters.length > 1) {
           packClusters.sort((a,b) => b.meshes.length - a.meshes.length);
@@ -360,49 +350,23 @@ const ModelCore = ({ scene }) => {
       uniqueX = filterClose(uniqueX, 0.3);
       uniqueZ = filterClose(uniqueZ, 0.3);
       
-      // === ALGORITMO DE CLUSTERING GEOMÉTRICO (DISTANCIA 3D) ===
-      // Pre-calcular cajas para cada malla
-      processedMeshes.forEach(m => {
-          m.userData.box = new THREE.Box3().setFromObject(m);
-      });
-
-      let clusters = [];
-      const DISTANCE_TOLERANCE = 100; // Tolerancia grande para agrupar piezas sueltas de un mismo modelo
-
-      processedMeshes.forEach(mesh => {
-         const meshBox = mesh.userData.box;
-         if (meshBox.isEmpty()) return;
-
-         const expandedBox = meshBox.clone().expandByScalar(DISTANCE_TOLERANCE);
-         const overlappingClusters = clusters.filter(c => c.box.intersectsBox(expandedBox));
-         
-         if (overlappingClusters.length > 0) {
-            const mainCluster = overlappingClusters[0];
-            mainCluster.meshes.push(mesh);
-            mainCluster.box.union(meshBox);
-            
-            for (let i = 1; i < overlappingClusters.length; i++) {
-               mainCluster.meshes.push(...overlappingClusters[i].meshes);
-               mainCluster.box.union(overlappingClusters[i].box);
-               clusters = clusters.filter(c => c !== overlappingClusters[i]);
-            }
-         } else {
-            clusters.push({
-               meshes: [mesh],
-               box: meshBox.clone()
-            });
-         }
-      });
+      // === ALGORITMO DE CLUSTERING GEOMÉTRICO (REUSO DE PACKING) ===
+      // Ya detectamos los clusters en el paso de empacado.
+      // Re-evaluamos sus bounding boxes ahora que han sido movidos.
       
-      // Filtrar clusters muy pequeños (basura/outliers de sketchup)
-      clusters = clusters.filter(c => c.meshes.length > 2);
-      
-      // Ordenar clusters por cantidad de mallas de mayor a menor (los más grandes primero)
-      clusters.sort((a, b) => b.meshes.length - a.meshes.length);
-
       let detectedSubModels = [];
-      if (clusters.length > 1) {
-         detectedSubModels = clusters.map((c, idx) => {
+      if (packClusters.length > 1) {
+         // Filtrar basura pequeña
+         packClusters = packClusters.filter(c => c.meshes.length > 2);
+         // Ordenar de mayor a menor
+         packClusters.sort((a, b) => b.meshes.length - a.meshes.length);
+         
+         packClusters.forEach(c => {
+             c.box = new THREE.Box3();
+             c.meshes.forEach(m => c.box.expandByObject(m));
+         });
+
+         detectedSubModels = packClusters.map((c, idx) => {
             // Asignar ID a las mallas de este cluster
             c.meshes.forEach(m => m.userData.subModelId = `sub_${idx}`);
             return {
