@@ -267,52 +267,123 @@ const ModelCore = ({ scene }) => {
       uniqueX = filterClose(uniqueX, 0.3);
       uniqueZ = filterClose(uniqueZ, 0.3);
       
-      useViewerStore.getState().setGridLines({ x: uniqueX, z: uniqueZ });
-
-      // === ELIMINAR VÉRTICES BASURA (OUTLIERS) ===
-      // SketchUp a menudo exporta vértices a kilómetros de distancia que arruinan la cámara.
-      if (uniqueX.length > 1 && uniqueZ.length > 1) {
-        const coreWidth = uniqueX[uniqueX.length - 1] - uniqueX[0];
-        const coreDepth = uniqueZ[uniqueZ.length - 1] - uniqueZ[0];
-        
-        // Tolerancia: 3 veces el tamaño del núcleo
-        const marginX = Math.max(coreWidth * 3, 5);
-        const marginZ = Math.max(coreDepth * 3, 5);
-        
-        const minX = uniqueX[0] - marginX;
-        const maxX = uniqueX[uniqueX.length - 1] + marginX;
-        const minZ = uniqueZ[0] - marginZ;
-        const maxZ = uniqueZ[uniqueZ.length - 1] + marginZ;
-
-        processedMeshes.forEach(m => {
-          const mBox = new THREE.Box3().setFromObject(m);
-          if (mBox.min.x > maxX || mBox.max.x < minX || mBox.min.z > maxZ || mBox.max.z < minZ) {
-            // Es un outlier extremo, remover de la escena
-            if (m.parent) {
-              m.parent.remove(m);
-            }
+      // === ALGORITMO DE CLUSTERING DE SUB-MODELOS ===
+      const subModelsX = [];
+      let currentSubX = [];
+      for(let i=0; i<uniqueX.length; i++) {
+        if(i === 0) currentSubX.push(uniqueX[i]);
+        else {
+          const gap = uniqueX[i] - uniqueX[i-1];
+          // Tolerancia de 20 unidades de gap
+          if (gap > 20) {
+             subModelsX.push(currentSubX);
+             currentSubX = [uniqueX[i]];
+          } else {
+             currentSubX.push(uniqueX[i]);
           }
-        });
+        }
       }
-    }
+      if(currentSubX.length > 0) subModelsX.push(currentSubX);
 
-    // Aplicar la opacidad almacenada en el estado a los nuevos materiales
-    const currentOpacity = useViewerStore.getState().modelOpacity;
-    const isTrans = currentOpacity < 1.0;
-    processedMeshes.forEach(mesh => {
-      if (mesh.material) {
-        mesh.material.transparent = isTrans;
-        mesh.material.opacity = currentOpacity;
-        mesh.material.needsUpdate = true;
+      let detectedSubModels = [];
+      if (subModelsX.length > 1) {
+         detectedSubModels = subModelsX.map((arr, idx) => {
+            const minX = arr[0] - 5;
+            const maxX = arr[arr.length - 1] + 5;
+            return {
+               id: `sub_${idx}`,
+               name: `Modelo ${idx + 1}`,
+               minX, maxX,
+               uniqueX: arr
+            }
+         });
       }
-      if (mesh.userData.originalMaterial) {
-        mesh.userData.originalMaterial.transparent = isTrans;
-        mesh.userData.originalMaterial.opacity = currentOpacity;
-      }
-    });
+      
+      // Store on memo for useEffect
+      processedMeshes.forEach(m => {
+          m.userData.originalParent = m.parent;
+          m.userData.box = new THREE.Box3().setFromObject(m);
+      });
 
-    meshesRef.current = processedMeshes;
+      return { pMeshes: processedMeshes, detectedSubModels, allUniqueX: uniqueX, allUniqueZ: uniqueZ };
   }, [scene]);
+
+  const activeSubModelId = useViewerStore(state => state.activeSubModelId);
+  const subModels = useViewerStore(state => state.subModels);
+
+  // Sync detected submodels to store ONCE when model loads
+  useEffect(() => {
+     if (memoData && memoData.detectedSubModels.length > 0) {
+        useViewerStore.getState().setSubModels(memoData.detectedSubModels);
+        useViewerStore.getState().setActiveSubModelId(memoData.detectedSubModels[0].id);
+     } else {
+        useViewerStore.getState().setSubModels([]);
+        useViewerStore.getState().setActiveSubModelId(null);
+     }
+  }, [memoData]);
+
+  // Filter meshes whenever active submodel changes
+  useEffect(() => {
+      if (!memoData || memoData.pMeshes.length === 0) return;
+      const { pMeshes, detectedSubModels, allUniqueX, allUniqueZ } = memoData;
+      
+      const activeSub = detectedSubModels.find(s => s.id === activeSubModelId);
+
+      const coreWidth = allUniqueX[allUniqueX.length - 1] - allUniqueX[0];
+      const coreDepth = allUniqueZ[allUniqueZ.length - 1] - allUniqueZ[0];
+      const marginX = Math.max(coreWidth * 3, 5);
+      const marginZ = Math.max(coreDepth * 3, 5);
+      const minGlobalX = allUniqueX[0] - marginX;
+      const maxGlobalX = allUniqueX[allUniqueX.length - 1] + marginX;
+      const minGlobalZ = allUniqueZ[0] - marginZ;
+      const maxGlobalZ = allUniqueZ[allUniqueZ.length - 1] + marginZ;
+
+      pMeshes.forEach(m => {
+        const mBox = m.userData.box;
+        
+        // 1. Basura global
+        if (allUniqueX.length > 1 && allUniqueZ.length > 1) {
+            if (mBox.min.x > maxGlobalX || mBox.max.x < minGlobalX || mBox.min.z > maxGlobalZ || mBox.max.z < minGlobalZ) {
+               if (m.parent) m.parent.remove(m);
+               return;
+            }
+        }
+        
+        // 2. Submodelo activo
+        if (activeSub) {
+           if (mBox.max.x < activeSub.minX || mBox.min.x > activeSub.maxX) {
+              if (m.parent) m.parent.remove(m);
+           } else {
+              if (!m.parent && m.userData.originalParent) m.userData.originalParent.add(m);
+           }
+        } else {
+           if (!m.parent && m.userData.originalParent) m.userData.originalParent.add(m);
+        }
+      });
+      
+      if (activeSub) {
+         useViewerStore.getState().setGridLines({ x: activeSub.uniqueX, z: allUniqueZ });
+      } else {
+         useViewerStore.getState().setGridLines({ x: allUniqueX, z: allUniqueZ });
+      }
+
+      // Aplicar la opacidad almacenada en el estado a los nuevos materiales
+      const currentOpacity = useViewerStore.getState().modelOpacity;
+      const isTrans = currentOpacity < 1.0;
+      pMeshes.forEach(mesh => {
+        if (mesh.material) {
+          mesh.material.transparent = isTrans;
+          mesh.material.opacity = currentOpacity;
+          mesh.material.needsUpdate = true;
+        }
+        if (mesh.userData.originalMaterial) {
+          mesh.userData.originalMaterial.transparent = isTrans;
+          mesh.userData.originalMaterial.opacity = currentOpacity;
+        }
+      });
+
+      meshesRef.current = pMeshes;
+  }, [memoData, activeSubModelId, modelOpacity]);
 
   // Instanciamos un solo vector temporal fuera del loop para evitar Garbage Collection
   const _tempVec = new THREE.Vector3();

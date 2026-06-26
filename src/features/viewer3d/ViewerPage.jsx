@@ -26,6 +26,9 @@ export const ViewerPage = () => {
   const setViewMode = useViewerStore((state) => state.setViewMode);
   const isLoadingBOM = useViewerStore((state) => state.isLoadingBOM);
   const assemblyBOM = useViewerStore((state) => state.assemblyBOM);
+  const subModels = useViewerStore((state) => state.subModels);
+  const activeSubModelId = useViewerStore((state) => state.activeSubModelId);
+  const setActiveSubModelId = useViewerStore((state) => state.setActiveSubModelId);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showToast, setShowToast] = useState(false);
@@ -51,6 +54,8 @@ export const ViewerPage = () => {
         useViewerStore.getState().setGridLines({ x: [], z: [] });
         useViewerStore.getState().setSelectedPartId(null, null);
         useViewerStore.getState().setAssemblyLevel(1);
+        useViewerStore.getState().setSubModels([]);
+        useViewerStore.getState().setActiveSubModelId(null);
         setGameData(null);
         
         try {
@@ -188,9 +193,38 @@ export const ViewerPage = () => {
             viewMode === 'picking' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
           }`}
         >
-          <ListChecks className="w-3 h-3 md:w-4 md:h-4" /> <span className="hidden sm:inline">Surtido / Picking</span><span className="sm:hidden">Picking</span>
+          <ListChecks className="w-3 h-3 md:w-4 md:h-4" /> <span className="hidden sm:inline">Picking List</span><span className="sm:hidden">List</span>
         </button>
       </div>
+
+      {/* Sub-Model Tabs */}
+      {subModels.length > 1 && viewMode === '3d' && (
+        <div className="absolute top-16 md:top-20 left-1/2 -translate-x-1/2 z-40 bg-slate-900/90 backdrop-blur-md p-1 rounded-lg border border-slate-700 shadow-lg flex items-center gap-1 overflow-x-auto max-w-[90vw] snap-x scrollbar-hide">
+          <button
+            onClick={() => setActiveSubModelId('all')}
+            className={`flex-shrink-0 px-4 py-2 text-xs md:text-sm font-medium rounded-md transition-all snap-center whitespace-nowrap ${
+              activeSubModelId === 'all' 
+                ? 'bg-industrial-accent text-white shadow-sm' 
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            Todos
+          </button>
+          {subModels.map((sub, idx) => (
+            <button
+              key={sub.id}
+              onClick={() => setActiveSubModelId(sub.id)}
+              className={`flex-shrink-0 px-4 py-2 text-xs md:text-sm font-medium rounded-md transition-all snap-center whitespace-nowrap ${
+                activeSubModelId === sub.id 
+                  ? 'bg-industrial-accent text-white shadow-sm' 
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              Módulo {idx + 1}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Botón Toggle Sidebar (Mobile/Tablet) */}
       <button 

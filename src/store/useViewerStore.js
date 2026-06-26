@@ -12,6 +12,12 @@ export const useViewerStore = create((set) => ({
   modelIsObj: false,
   setModelIsObj: (isObj) => set({ modelIsObj: isObj }),
 
+  // Sub-modelos detectados y el activo
+  subModels: [],
+  setSubModels: (models) => set({ subModels: models }),
+  activeSubModelId: null,
+  setActiveSubModelId: (id) => set({ activeSubModelId: id }),
+
   // Líneas de la cuadrícula adaptables (extraídas de las posiciones de los postes)
   gridLines: { x: [], z: [] },
   setGridLines: (lines) => set({ gridLines: lines }),
