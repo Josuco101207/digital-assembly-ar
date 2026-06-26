@@ -11,6 +11,19 @@ import { CoordinateGrid } from './components/CoordinateGrid';
 // cámara y orquestación del Canvas.
 
 import { useViewerStore } from '../../store/useViewerStore';
+import { useBounds } from '@react-three/drei';
+
+const BoundsFitter = ({ activeSubModelId }) => {
+  const api = useBounds();
+  React.useEffect(() => {
+    // Small delay to let visibility changes apply before calculating new bounding box
+    const timer = setTimeout(() => {
+      api.refresh().fit();
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [activeSubModelId, api]);
+  return null;
+};
 
 const SceneContent = ({ modelUrl }) => {
   const { isPresenting, session } = useXR();
@@ -61,7 +74,8 @@ const SceneContent = ({ modelUrl }) => {
               <ambientLight intensity={1} />
               <directionalLight position={[10, 10, 10]} intensity={1.5} castShadow />
               {showGrid && <CoordinateGrid />}
-              <Bounds key={activeSubModelId} fit margin={1.2}>
+              <Bounds fit margin={1.2}>
+                <BoundsFitter activeSubModelId={activeSubModelId} />
                 <Center top onCentered={handleCentered}>
                   {modelUrl && <ModelLoader url={modelUrl} />}
                 </Center>
@@ -85,7 +99,8 @@ const SceneContent = ({ modelUrl }) => {
       <directionalLight position={[10, 10, 10]} intensity={1.2} castShadow={false} />
       <directionalLight position={[-10, 10, -10]} intensity={0.5} castShadow={false} />
       {showGrid && <CoordinateGrid />}
-      <Bounds key={activeSubModelId} fit margin={1.2}>
+      <Bounds fit margin={1.2}>
+        <BoundsFitter activeSubModelId={activeSubModelId} />
         <Center top onCentered={handleCentered}>
           {modelUrl && <ModelLoader url={modelUrl} />}
         </Center>
@@ -125,14 +140,13 @@ export const ViewerScene = () => {
       <Canvas 
         shadows={false} 
         dpr={[0.5, 1]} // Dynamic resolution down to 0.5x on slow devices
-        frameloop="demand" // Only render when things change, saves massive CPU/GPU
         gl={{ 
           antialias: false, 
-          powerPreference: "low-power", // Avoid high-performance forcing which crashes some old phones
+          powerPreference: "low-power", 
           precision: "lowp",
-          alpha: false, // Disabling alpha channel saves memory
+          alpha: false, 
           depth: true,
-          stencil: false, // Disabling stencil buffer saves memory
+          stencil: false, 
           preserveDrawingBuffer: false
         }} 
       >

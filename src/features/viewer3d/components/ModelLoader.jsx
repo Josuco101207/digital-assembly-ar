@@ -460,7 +460,7 @@ const ModelCore = ({ scene }) => {
         useViewerStore.getState().setSubModels([]);
         useViewerStore.getState().setActiveSubModelId(null);
      }
-  }, [memoData]);
+   }, [memoData]);
 
   // Filter meshes whenever active submodel changes
   useEffect(() => {
@@ -471,13 +471,9 @@ const ModelCore = ({ scene }) => {
       
       pMeshes.forEach(m => {
          if (activeSub) {
-            if (m.userData.subModelId !== activeSub.id) {
-               if (m.parent) m.parent.remove(m);
-            } else {
-               if (!m.parent && m.userData.originalParent) m.userData.originalParent.add(m);
-            }
+            m.visible = (m.userData.subModelId === activeSub.id);
          } else {
-            if (!m.parent && m.userData.originalParent) m.userData.originalParent.add(m);
+            m.visible = true;
          }
       });
       
