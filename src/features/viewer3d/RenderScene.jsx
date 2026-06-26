@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Center, Bounds, Environment, ContactShadows, Sky, PerspectiveCamera } from '@react-three/drei';
+import { OrbitControls, Center, Bounds, Environment, ContactShadows, Sky, PerspectiveCamera, PerformanceMonitor, AdaptiveDpr } from '@react-three/drei';
 import { PureModelLoader } from './components/PureModelLoader';
 import { LoadingOverlay } from './components/LoadingOverlay';
 
@@ -50,6 +50,10 @@ export const RenderScene = ({ modelUrl, lightIntensity }) => {
         dpr={[0.5, 1.5]}
       >
         <PerspectiveCamera makeDefault position={[8, 5, 8]} fov={45} near={0.1} far={10000} />
+
+        <PerformanceMonitor onDecline={() => {}} onIncline={() => {}}>
+          <AdaptiveDpr pixelated />
+        </PerformanceMonitor>
 
         <Suspense fallback={<LoadingOverlay />}>
           <SceneContent modelUrl={modelUrl} lightIntensity={lightIntensity} />

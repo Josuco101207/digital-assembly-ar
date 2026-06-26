@@ -68,11 +68,26 @@ const ModelCore = ({ scene }) => {
       scene.updateMatrixWorld(true);
       
       scene.traverse((child) => {
-        if (child.isLine || child.isLineLoop || child.isLineSegments || child.isPoints || child.isSprite) {
-          return;
-        }
-  
         if (child.isMesh) {
+          // OPTIMIZATION: Downgrade PBR materials to Lambert for massive mobile performance boost
+          if (child.material && (child.material.isMeshStandardMaterial || child.material.type === 'MeshStandardMaterial')) {
+             child.material = new THREE.MeshLambertMaterial({
+                color: child.material.color,
+                map: child.material.map,
+                transparent: child.material.transparent,
+                opacity: child.material.opacity,
+                side: child.material.side,
+                name: child.material.name
+             });
+          }
+          child.castShadow = false;
+          child.receiveShadow = false;
+          child.matrixAutoUpdate = false; // Solo se actualiza la matriz cuando se mueve
+
+          if (child.isLine || child.isLineLoop || child.isLineSegments || child.isPoints || child.isSprite) {
+            return;
+          }
+  
           const n = (child.name || "").toLowerCase();
           if (n.includes('text') || n.includes('grid') || n.includes('sketch') || n.includes('boceto') || n.includes('axis') || n.includes('eje') || n.includes('annotation')) {
             return;
@@ -468,12 +483,21 @@ const ModelCore = ({ scene }) => {
       const { pMeshes, detectedSubModels, allUniqueX, allUniqueZ } = memoData;
       
       const activeSub = detectedSubModels.find(s => s.id === activeSubModelId);
+      const currentOpacity = useViewerStore.getState().modelOpacity;
+      const isTrans = currentOpacity < 1.0;
       
       pMeshes.forEach(m => {
          if (activeSub) {
             m.visible = (m.userData.subModelId === activeSub.id);
          } else {
             m.visible = true;
+         }
+         
+         // Apply transparency
+         if (m.material) {
+            m.material.transparent = isTrans;
+            m.material.opacity = currentOpacity;
+            m.material.needsUpdate = true;
          }
       });
       
@@ -490,22 +514,7 @@ const ModelCore = ({ scene }) => {
       } else {
          useViewerStore.getState().setGridLines({ x: allUniqueX, z: allUniqueZ });
       }
-
-      // Aplicar la opacidad almacenada en el estado a los nuevos materiales
-      const currentOpacity = useViewerStore.getState().modelOpacity;
-      const isTrans = currentOpacity < 1.0;
-      pMeshes.forEach(mesh => {
-        if (mesh.material) {
-          mesh.material.transparent = isTrans;
-          mesh.material.opacity = currentOpacity;
-          mesh.material.needsUpdate = true;
-        }
-        if (mesh.userData.originalMaterial) {
-          mesh.userData.originalMaterial.transparent = isTrans;
-          mesh.userData.originalMaterial.opacity = currentOpacity;
-        }
-      });
-
+      
       meshesRef.current = pMeshes;
   }, [memoData, activeSubModelId, modelOpacity]);
 
@@ -515,8 +524,10 @@ const ModelCore = ({ scene }) => {
   // Loop de Animación de Alto Rendimiento (60 FPS)
   useFrame((state, delta) => {
     meshesRef.current.forEach((mesh) => {
-      // 1. Lógica de Secuencia de Armado (Caída en Y)
-      const isVisible = assemblyLevel >= mesh.userData.requiredLevel;
+      const isVisibleInAssembly = assemblyLevel >= mesh.userData.requiredLevel;
+      const currentActiveSubModel = useViewerStore.getState().activeSubModelId;
+      const isVisibleInSubModel = currentActiveSubModel ? (mesh.userData.subModelId === currentActiveSubModel) : true;
+      const shouldBeVisible = isVisibleInAssembly && isVisibleInSubModel;
       
       // Reutilizamos el vector en lugar de usar .clone() que mata la memoria
       _tempVec.copy(mesh.userData.originalPosition);
@@ -526,7 +537,7 @@ const ModelCore = ({ scene }) => {
         _tempVec.z *= 1.5;
       }
 
-      if (isVisible) {
+      if (shouldBeVisible) {
         mesh.visible = true;
         if (mesh.position.distanceToSquared(_tempVec) > 0.0001) {
           mesh.position.lerp(_tempVec, delta * 5);

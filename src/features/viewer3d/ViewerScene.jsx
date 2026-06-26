@@ -1,6 +1,6 @@
 import React, { Suspense, useRef, useState, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Center, Bounds, GizmoHelper, GizmoViewcube, PerspectiveCamera, OrthographicCamera } from '@react-three/drei';
+import { OrbitControls, Center, Bounds, GizmoHelper, GizmoViewcube, PerspectiveCamera, OrthographicCamera, PerformanceMonitor, AdaptiveDpr } from '@react-three/drei';
 import { ARButton, XR, useXR, useHitTest, Interactive } from '@react-three/xr';
 import { ModelLoader } from './components/ModelLoader';
 import { LoadingOverlay } from './components/LoadingOverlay';
@@ -157,6 +157,9 @@ export const ViewerScene = () => {
         )}
 
         <XR>
+          <PerformanceMonitor onDecline={() => {}} onIncline={() => {}}>
+            <AdaptiveDpr pixelated />
+          </PerformanceMonitor>
           <color attach="background" args={['#1e293b']} />
           <Suspense fallback={<LoadingOverlay />}>
             <SceneContent modelUrl={modelUrl} />
