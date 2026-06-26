@@ -212,7 +212,6 @@ const ModelCore = ({ scene }) => {
               });
               return { meshes, box, center: box.getCenter(new THREE.Vector3()) };
           });
-      }
       console.log("PACKING ALGORITHM: Detected", packClusters.length, "K-Means clusters.");
 
         if (packClusters.length > 1) {
