@@ -152,7 +152,11 @@ export const ViewerScene = () => {
           makeDefault 
           minPolarAngle={0} 
           maxPolarAngle={Math.PI} // Permite rotar completamente por debajo del modelo
-          makeDefault
+          rotateSpeed={0.4} // Menos sensibilidad al rotar
+          panSpeed={0.4} // Menos sensibilidad al panear
+          zoomSpeed={0.5} // Menos sensibilidad al hacer zoom
+          enableDamping={true} // Movimiento suave con inercia
+          dampingFactor={0.1}
         />
 
         {/* ViewCube interactivo estilo CAD (arriba a la derecha) */}
