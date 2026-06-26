@@ -138,82 +138,81 @@ const ModelCore = ({ scene }) => {
            m.userData.packBox = new THREE.Box3().setFromObject(m);
         });
   
-        // A. Initial fine-grained clustering to break chaining
-        const CORE_TOLERANCE = 15;
-        let cores = [];
-        processedMeshes.forEach(mesh => {
-           const meshBox = mesh.userData.packBox;
-           if (meshBox.isEmpty()) return;
-           const size = meshBox.getSize(new THREE.Vector3());
-           if (size.x > 400 || size.z > 400) return; // Ignore large connecting pieces
-  
-           const expandedBox = meshBox.clone().expandByScalar(CORE_TOLERANCE);
-           const overlapping = cores.filter(c => c.box.intersectsBox(expandedBox));
-           
-           if (overlapping.length > 0) {
-              const main = overlapping[0];
-              main.meshes.push(mesh);
-              main.box.union(meshBox);
-              for (let i = 1; i < overlapping.length; i++) {
-                 main.meshes.push(...overlapping[i].meshes);
-                 main.box.union(overlapping[i].box);
-                 cores = cores.filter(c => c !== overlapping[i]);
-              }
-           } else {
-              cores.push({ meshes: [mesh], box: meshBox.clone() });
-           }
-        });
-  
-        // B. Remove artifacts (small cores) to break the chains permanently
-        let solidCores = cores.filter(c => c.meshes.length > 10);
-        if (solidCores.length === 0) solidCores = [cores.sort((a,b)=>b.meshes.length - a.meshes.length)[0]];
-  
-        // C. Merge solid cores that belong to the same structure (using a large tolerance now that chains are gone)
-        const MERGE_TOLERANCE = 250; 
-        let mainClusters = [];
-        solidCores.forEach(core => {
-           const expandedBox = core.box.clone().expandByScalar(MERGE_TOLERANCE);
-           const overlapping = mainClusters.filter(c => c.box.intersectsBox(expandedBox));
-           if (overlapping.length > 0) {
-              const main = overlapping[0];
-              main.meshes.push(...core.meshes);
-              main.box.union(core.box);
-              for (let i = 1; i < overlapping.length; i++) {
-                 main.meshes.push(...overlapping[i].meshes);
-                 main.box.union(overlapping[i].box);
-                 mainClusters = mainClusters.filter(c => c !== overlapping[i]);
-              }
-           } else {
-              mainClusters.push({ meshes: [...core.meshes], box: core.box.clone() });
-           }
-        });
-  
-        // D. Assign ALL meshes (including artifacts, giant pieces, etc) to the nearest Main Cluster
-        mainClusters.forEach(c => c.center = c.box.getCenter(new THREE.Vector3()));
+      // 2. DBSCAN Density-based Clustering
+      let packClusters = [];
+      if (processedMeshes.length > 0) {
+        const R = 300; 
+        const MIN_PTS = 20;
         
-        let finalClusters = mainClusters.map(c => ({ meshes: [], box: new THREE.Box3(), center: c.center }));
+        const nodes = processedMeshes.map(m => {
+            m.updateMatrixWorld(true);
+            const box = new THREE.Box3().setFromObject(m);
+            m.userData.packBox = box;
+            return { mesh: m, center: box.isEmpty() ? new THREE.Vector3() : box.getCenter(new THREE.Vector3()), box, density: 0 };
+        }).filter(n => !n.box.isEmpty());
         
-        processedMeshes.forEach(mesh => {
-            if (mesh.userData.packBox.isEmpty()) return;
-            const center = mesh.userData.packBox.getCenter(new THREE.Vector3());
-            
+        // Compute local density (O(N^2) but N is small enough for JS)
+        for (let i = 0; i < nodes.length; i++) {
+            for (let j = i; j < nodes.length; j++) {
+                if (nodes[i].center.distanceTo(nodes[j].center) <= R) {
+                    nodes[i].density++;
+                    if (i !== j) nodes[j].density++;
+                }
+            }
+        }
+        
+        // Extract dense core nodes
+        const coreNodes = nodes.filter(n => n.density >= MIN_PTS);
+        
+        // Group overlapping cores
+        let clusters = [];
+        coreNodes.forEach(core => {
+            const overlapping = clusters.filter(cl => cl.cores.some(c => c.center.distanceTo(core.center) <= R));
+            if (overlapping.length > 0) {
+                const main = overlapping[0];
+                main.cores.push(core);
+                for (let i = 1; i < overlapping.length; i++) {
+                    main.cores.push(...overlapping[i].cores);
+                    clusters = clusters.filter(cl => cl !== overlapping[i]);
+                }
+            } else {
+                clusters.push({ cores: [core] });
+            }
+        });
+        
+        // Fallback if no dense clusters found
+        if (clusters.length === 0) {
+            clusters = [{ cores: nodes }];
+        }
+        
+        // Convert to packClusters format
+        packClusters = clusters.map(cl => {
+            const box = new THREE.Box3();
+            const meshes = [];
+            cl.cores.forEach(c => {
+                box.union(c.box);
+                meshes.push(c.mesh);
+            });
+            return { meshes, box, center: box.getCenter(new THREE.Vector3()) };
+        });
+        
+        // Assign non-core nodes (garbage/long paths) to nearest cluster
+        const nonCoreNodes = nodes.filter(n => n.density < MIN_PTS);
+        nonCoreNodes.forEach(n => {
             let minDist = Infinity;
-            let bestCluster = finalClusters[0];
-            
-            finalClusters.forEach(c => {
-                const dist = center.distanceTo(c.center);
+            let bestCluster = packClusters[0];
+            packClusters.forEach(cl => {
+                const dist = n.center.distanceTo(cl.center);
                 if (dist < minDist) {
                     minDist = dist;
-                    bestCluster = c;
+                    bestCluster = cl;
                 }
             });
-            
-            bestCluster.meshes.push(mesh);
-            bestCluster.box.union(mesh.userData.packBox);
+            bestCluster.meshes.push(n.mesh);
+            bestCluster.box.union(n.box);
         });
-        
-        packClusters = finalClusters;
-        console.log("PACKING ALGORITHM: Detected", packClusters.length, "density-based clusters.");
+
+        console.log("PACKING ALGORITHM: Detected", packClusters.length, "DBSCAN clusters.");
 
         if (packClusters.length > 1) {
           packClusters.sort((a,b) => b.meshes.length - a.meshes.length);
