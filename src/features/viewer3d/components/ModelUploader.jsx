@@ -1,26 +1,65 @@
 import React, { useCallback, useState } from 'react';
 import { useViewerStore } from '../../../store/useViewerStore';
-import { UploadCloud, FileBox, AlertCircle } from 'lucide-react';
+import { UploadCloud, FileBox, AlertCircle, Loader2 } from 'lucide-react';
 
 export const ModelUploader = () => {
   const setModelUrl = useViewerStore((state) => state.setModelUrl);
+  const setIsModelLoading = useViewerStore((state) => state.setIsModelLoading);
+  const isModelLoading = useViewerStore((state) => state.isModelLoading);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState(null);
+  const [conversionProgress, setConversionProgress] = useState(null);
 
-  const processFile = (file) => {
+  const processFile = async (file) => {
     if (!file) return;
     
     // Validar extensión
-    const isValid = file.name.endsWith('.glb') || file.name.endsWith('.gltf');
+    const isGlb = file.name.toLowerCase().endsWith('.glb') || file.name.toLowerCase().endsWith('.gltf');
+    const isSkp = file.name.toLowerCase().endsWith('.skp');
     
-    if (!isValid) {
-      setError('Formato no soportado. Por favor sube un archivo .glb o .gltf');
+    if (!isGlb && !isSkp) {
+      setError('Formato no soportado. Por favor sube un archivo .skp, .glb o .gltf');
       return;
     }
 
     setError(null);
-    const objectUrl = URL.createObjectURL(file);
-    setModelUrl(objectUrl);
+
+    if (isSkp) {
+      try {
+        setIsModelLoading(true);
+        setConversionProgress('Analizando archivo de SketchUp...');
+        
+        // Dynamic import so we don't bloat the initial page load
+        const openskp = await import('openskp');
+        
+        setConversionProgress('Extrayendo geometría y materiales...');
+        const arrayBuffer = await file.arrayBuffer();
+        
+        // Parse the Sketchup file
+        const model = openskp.parseSkp(arrayBuffer);
+        
+        setConversionProgress('Convirtiendo a formato GLB (Web)...');
+        // Export to GLB format binary
+        const glbBuffer = openskp.toGLB(model);
+        
+        // Create Blob and URL
+        const blob = new Blob([glbBuffer], { type: 'model/gltf-binary' });
+        const objectUrl = URL.createObjectURL(blob);
+        
+        setConversionProgress(null);
+        setIsModelLoading(false);
+        setModelUrl(objectUrl);
+      } catch (err) {
+        console.error("Error al convertir SKP:", err);
+        setError('Error al procesar el archivo .skp. Asegúrate de que es versión 2021 o superior y no está corrupto.');
+        setConversionProgress(null);
+        setIsModelLoading(false);
+      }
+    } else {
+      // GLB or GLTF
+      const objectUrl = URL.createObjectURL(file);
+      setModelUrl(objectUrl);
+    }
   };
 
   const handleDragOver = useCallback((e) => {
@@ -66,30 +105,49 @@ export const ModelUploader = () => {
         >
           <input
             type="file"
-            accept=".glb,.gltf"
+            accept=".skp,.glb,.gltf"
             onChange={handleFileChange}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-            title="Sube tu archivo GLB/GLTF"
+            className={`absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 ${isModelLoading ? 'hidden' : ''}`}
+            title="Sube tu archivo SKP/GLB/GLTF"
+            disabled={isModelLoading}
           />
           
           <div className="flex flex-col items-center justify-center pointer-events-none space-y-6">
-            <div className={`p-6 rounded-full transition-colors duration-300 ${isDragging ? 'bg-industrial-accent/20 text-industrial-accent' : 'bg-slate-700/50 text-slate-400'}`}>
-              <UploadCloud className="w-16 h-16" />
-            </div>
-            
-            <div>
-              <p className="text-xl font-bold text-white mb-2">
-                Arrastra tu ensamble aquí
-              </p>
-              <p className="text-slate-400 text-sm">
-                o haz clic para explorar tus archivos locales
-              </p>
-            </div>
+            {isModelLoading ? (
+              <>
+                <div className="p-6 rounded-full bg-industrial-accent/20 text-industrial-accent animate-pulse">
+                  <Loader2 className="w-16 h-16 animate-spin" />
+                </div>
+                <div>
+                  <p className="text-xl font-bold text-white mb-2">
+                    Procesando Archivo
+                  </p>
+                  <p className="text-industrial-accent text-sm font-mono animate-pulse">
+                    {conversionProgress || 'Extrayendo geometría...'}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className={`p-6 rounded-full transition-colors duration-300 ${isDragging ? 'bg-industrial-accent/20 text-industrial-accent' : 'bg-slate-700/50 text-slate-400'}`}>
+                  <UploadCloud className="w-16 h-16" />
+                </div>
+                
+                <div>
+                  <p className="text-xl font-bold text-white mb-2">
+                    Arrastra tu ensamble aquí
+                  </p>
+                  <p className="text-slate-400 text-sm">
+                    o haz clic para explorar tus archivos locales
+                  </p>
+                </div>
 
-            <div className="flex items-center gap-2 text-xs font-mono text-slate-500 bg-slate-900/50 px-4 py-2 rounded-full border border-slate-700/50">
-              <FileBox className="w-4 h-4" />
-              Soporta formatos .GLB y .GLTF
-            </div>
+                <div className="flex items-center gap-2 text-xs font-mono text-slate-500 bg-slate-900/50 px-4 py-2 rounded-full border border-slate-700/50">
+                  <FileBox className="w-4 h-4" />
+                  Soporta formatos nativos .SKP, .GLB y .GLTF
+                </div>
+              </>
+            )}
           </div>
         </div>
 
