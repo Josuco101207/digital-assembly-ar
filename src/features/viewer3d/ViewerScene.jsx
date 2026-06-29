@@ -71,8 +71,8 @@ const SceneContent = ({ modelUrl }) => {
               Si no lo tenemos, mostramos el reticle para que el usuario escoja el piso. */}
           {placement ? (
             <group position={placement.position} rotation={placement.rotation} scale={arScale}>
-              <ambientLight intensity={1} />
-              <directionalLight position={[10, 10, 10]} intensity={1.5} castShadow />
+              <ambientLight intensity={0.4} />
+              <directionalLight position={[10, 10, 10]} intensity={0.8} castShadow={false} />
               {showGrid && <CoordinateGrid />}
               <Bvh firstHitOnly>
                 <Bounds fit margin={1.2}>
@@ -97,9 +97,9 @@ const SceneContent = ({ modelUrl }) => {
   // Vista 3D normal en pantalla: Iluminación estática ultraligera para máximo rendimiento
   return (
     <>
-      <ambientLight intensity={0.7} />
-      <directionalLight position={[10, 10, 10]} intensity={1.2} castShadow={false} />
-      <directionalLight position={[-10, 10, -10]} intensity={0.5} castShadow={false} />
+      <ambientLight intensity={0.4} />
+      <directionalLight position={[10, 10, 10]} intensity={0.8} castShadow={false} />
+      <directionalLight position={[-10, 10, -10]} intensity={0.3} castShadow={false} />
       {showGrid && <CoordinateGrid />}
       <Bvh firstHitOnly>
         <Bounds fit margin={1.2}>

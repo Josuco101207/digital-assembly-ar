@@ -31,9 +31,9 @@ export const PureModelLoader = ({ url }) => {
         clone.castShadow = false;
         clone.receiveShadow = false;
         
-        // OPTIMIZATION: Downgrade to Basic for performance (Potato Mode)
+        // OPTIMIZATION: Downgrade to Lambert to retain shading but improve performance
         if (child.material) {
-             clone.material = new THREE.MeshBasicMaterial({
+             clone.material = new THREE.MeshLambertMaterial({
                 color: child.material.color,
                 map: child.material.map,
                 transparent: child.material.transparent,

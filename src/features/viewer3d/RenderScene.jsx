@@ -10,7 +10,7 @@ const SceneContent = ({ modelUrl, lightIntensity = 1.5 }) => {
       <ambientLight intensity={0.5 * (lightIntensity / 1.5)} />
       <directionalLight
         position={[10, 20, 10]}
-        intensity={2.5 * (lightIntensity / 1.5)}
+        intensity={1.2 * (lightIntensity / 1.5)}
         castShadow
         shadow-mapSize={[1024, 1024]}
         shadow-camera-left={-20}
