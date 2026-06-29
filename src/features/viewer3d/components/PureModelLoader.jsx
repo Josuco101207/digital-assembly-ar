@@ -28,19 +28,22 @@ export const PureModelLoader = ({ url }) => {
         child.getWorldPosition(clone.position);
         child.getWorldQuaternion(clone.quaternion);
         child.getWorldScale(clone.scale);
+        clone.castShadow = false;
+        clone.receiveShadow = false;
         
-        clone.castShadow = true;
-        clone.receiveShadow = true;
-        clone.matrixAutoUpdate = true;
-
-        if (clone.material) {
-           clone.material.side = THREE.DoubleSide;
-           if (clone.material.metalness !== undefined) {
-             clone.material.roughness = Math.max(0.2, clone.material.roughness);
-             clone.material.envMapIntensity = 1.2;
-             clone.material.needsUpdate = true;
-           }
+        // OPTIMIZATION: Downgrade to Basic for performance (Potato Mode)
+        if (child.material) {
+             clone.material = new THREE.MeshBasicMaterial({
+                color: child.material.color,
+                map: child.material.map,
+                transparent: child.material.transparent,
+                opacity: child.material.opacity,
+                side: THREE.DoubleSide,
+                name: child.material.name
+             });
         }
+        
+        clone.matrixAutoUpdate = false;
         
         let topNode = child;
         while (topNode.parent && topNode.parent !== scene && topNode.parent.type !== 'Scene') {

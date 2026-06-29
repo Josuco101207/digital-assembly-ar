@@ -47,7 +47,7 @@ export const RenderScene = ({ modelUrl, lightIntensity }) => {
       <Canvas 
         shadows
         gl={{ antialias: false, alpha: false, preserveDrawingBuffer: true, powerPreference: "default" }}
-        dpr={[0.5, 1.5]}
+        dpr={[0.3, 0.6]}
       >
         <PerspectiveCamera makeDefault position={[8, 5, 8]} fov={45} near={0.1} far={10000} />
 

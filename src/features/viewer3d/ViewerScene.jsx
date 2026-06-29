@@ -1,6 +1,6 @@
 import React, { Suspense, useRef, useState, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Center, Bounds, GizmoHelper, GizmoViewcube, PerspectiveCamera, OrthographicCamera, PerformanceMonitor, AdaptiveDpr } from '@react-three/drei';
+import { OrbitControls, Center, Bounds, PerspectiveCamera, OrthographicCamera, PerformanceMonitor, AdaptiveDpr, Bvh } from '@react-three/drei';
 import { ARButton, XR, useXR, useHitTest, Interactive } from '@react-three/xr';
 import { ModelLoader } from './components/ModelLoader';
 import { LoadingOverlay } from './components/LoadingOverlay';
@@ -74,12 +74,14 @@ const SceneContent = ({ modelUrl }) => {
               <ambientLight intensity={1} />
               <directionalLight position={[10, 10, 10]} intensity={1.5} castShadow />
               {showGrid && <CoordinateGrid />}
-              <Bounds fit margin={1.2}>
-                <BoundsFitter activeSubModelId={activeSubModelId} />
-                <Center top onCentered={handleCentered}>
-                  {modelUrl && <ModelLoader url={modelUrl} />}
-                </Center>
-              </Bounds>
+              <Bvh firstHitOnly>
+                <Bounds fit margin={1.2}>
+                  <BoundsFitter activeSubModelId={activeSubModelId} />
+                  <Center top onCentered={handleCentered}>
+                    {modelUrl && <ModelLoader url={modelUrl} />}
+                  </Center>
+                </Bounds>
+              </Bvh>
             </group>
           ) : (
             <mesh ref={reticleRef} rotation-x={-Math.PI / 2}>
@@ -99,12 +101,14 @@ const SceneContent = ({ modelUrl }) => {
       <directionalLight position={[10, 10, 10]} intensity={1.2} castShadow={false} />
       <directionalLight position={[-10, 10, -10]} intensity={0.5} castShadow={false} />
       {showGrid && <CoordinateGrid />}
-      <Bounds fit margin={1.2}>
-        <BoundsFitter activeSubModelId={activeSubModelId} />
-        <Center top onCentered={handleCentered}>
-          {modelUrl && <ModelLoader url={modelUrl} />}
-        </Center>
-      </Bounds>
+      <Bvh firstHitOnly>
+        <Bounds fit margin={1.2}>
+          <BoundsFitter activeSubModelId={activeSubModelId} />
+          <Center top onCentered={handleCentered}>
+            {modelUrl && <ModelLoader url={modelUrl} />}
+          </Center>
+        </Bounds>
+      </Bvh>
     </>
   );
 };
@@ -139,7 +143,7 @@ export const ViewerScene = () => {
       {/* Canvas 3D (Desarrollador B) */}
       <Canvas 
         shadows={false} 
-        dpr={[0.5, 1]} // Dynamic resolution down to 0.5x on slow devices
+        dpr={[0.3, 0.6]} // POTATO MODE: Extreme low resolution for maximum FPS
         gl={{ 
           antialias: false, 
           powerPreference: "low-power", 
@@ -176,20 +180,6 @@ export const ViewerScene = () => {
           dampingFactor={0.1}
         />
 
-        {/* ViewCube interactivo estilo CAD (arriba a la derecha) */}
-        <GizmoHelper
-          alignment="top-right"
-          margin={[80, 80]}
-        >
-          <GizmoViewcube 
-            color="#334155"
-            strokeColor="#475569"
-            textColor="white"
-            hoverColor="#0ea5e9"
-            opacity={0.85}
-            faces={['Derecha', 'Izquierda', 'Arriba', 'Abajo', 'Frente', 'Atrás']}
-          />
-        </GizmoHelper>
         </XR>
       </Canvas>
     </div>

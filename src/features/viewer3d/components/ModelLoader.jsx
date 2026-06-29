@@ -69,9 +69,9 @@ const ModelCore = ({ scene }) => {
       
       scene.traverse((child) => {
         if (child.isMesh) {
-          // OPTIMIZATION: Downgrade PBR materials to Lambert for massive mobile performance boost
-          if (child.material && (child.material.isMeshStandardMaterial || child.material.type === 'MeshStandardMaterial')) {
-             child.material = new THREE.MeshLambertMaterial({
+          // OPTIMIZATION: Downgrade PBR materials to Basic for massive mobile performance boost (Potato Mode)
+          if (child.material && (child.material.isMeshStandardMaterial || child.material.type === 'MeshStandardMaterial' || child.material.isMeshLambertMaterial)) {
+             child.material = new THREE.MeshBasicMaterial({
                 color: child.material.color,
                 map: child.material.map,
                 transparent: child.material.transparent,
