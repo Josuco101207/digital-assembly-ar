@@ -74,7 +74,12 @@ export const downloadModelChunked = async (modelUrl, setUploadStatus) => {
     const cachedData = await localforage.getItem(cacheKey);
     if (cachedData) {
       if (setUploadStatus) setUploadStatus('Cargando desde caché local...');
-      const decompressedData = fflate.gunzipSync(cachedData);
+      const decompressedData = await new Promise((resolve, reject) => {
+        fflate.gunzip(cachedData, (err, dat) => {
+          if (err) reject(err);
+          else resolve(dat);
+        });
+      });
       const blob = new Blob([decompressedData.buffer]);
       return URL.createObjectURL(blob);
     }
@@ -119,9 +124,15 @@ export const downloadModelChunked = async (modelUrl, setUploadStatus) => {
     localforage.setItem(cacheKey, combinedData).catch(e => console.warn("Error guardando en caché:", e));
   } catch (e) {}
 
-  // Descomprimir
+  // Descomprimir de forma asíncrona para no congelar/crashear tablets
   if (setUploadStatus) setUploadStatus('Descomprimiendo modelo 3D...');
-  const decompressedData = fflate.gunzipSync(combinedData);
+  
+  const decompressedData = await new Promise((resolve, reject) => {
+    fflate.gunzip(combinedData, (err, dat) => {
+      if (err) reject(err);
+      else resolve(dat);
+    });
+  });
   
   const blob = new Blob([decompressedData.buffer]);
   return URL.createObjectURL(blob);
