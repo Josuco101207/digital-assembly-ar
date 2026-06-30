@@ -217,8 +217,8 @@ const ModelCore = ({ scene }) => {
       useViewerStore.getState().setAssemblyLevel(currentLevel);
       
       // === EXTRACCIÓN DE POSTES PARA LA CUADRÍCULA ===
-      const xSet = new Set();
-      const zSet = new Set();
+      const rawX = [];
+      const rawZ = [];
       
       processedMeshes.forEach(m => {
         const box = new THREE.Box3().setFromObject(m);
@@ -227,15 +227,34 @@ const ModelCore = ({ scene }) => {
         // Heurística: Un "poste" es significativamente más alto (Y) que ancho (X) y profundo (Z)
         if (size.y > size.x * 2 && size.y > size.z * 2) {
           const center = box.getCenter(new THREE.Vector3());
-          // Redondeamos con tolerancia alta (0.5) para agrupar postes cercanos en la misma línea
-          const roundTo = (num, step) => Math.round(num / step) * step;
-          xSet.add(roundTo(center.x, 0.5));
-          zSet.add(roundTo(center.z, 0.5));
+          rawX.push(center.x);
+          rawZ.push(center.z);
         }
       });
-      
-      let uniqueX = Array.from(xSet).sort((a, b) => a - b);
-      let uniqueZ = Array.from(zSet).sort((a, b) => a - b);
+
+      // Función para agrupar (1D clustering) y sacar el promedio exacto
+      const cluster1D = (arr, tolerance) => {
+         if (arr.length === 0) return [];
+         arr.sort((a, b) => a - b);
+         const clusters = [];
+         let currentCluster = [arr[0]];
+         
+         for (let i = 1; i < arr.length; i++) {
+            if (arr[i] - currentCluster[currentCluster.length - 1] <= tolerance) {
+               currentCluster.push(arr[i]);
+            } else {
+               const avg = currentCluster.reduce((a, b) => a + b, 0) / currentCluster.length;
+               clusters.push(avg);
+               currentCluster = [arr[i]];
+            }
+         }
+         const avg = currentCluster.reduce((a, b) => a + b, 0) / currentCluster.length;
+         clusters.push(avg);
+         return clusters;
+      };
+
+      let uniqueX = cluster1D(rawX, 0.3);
+      let uniqueZ = cluster1D(rawZ, 0.3);
       
       // Fallback si la heurística no encuentra postes (ensamble raro)
       if (uniqueX.length === 0 || uniqueZ.length === 0) {
@@ -252,20 +271,6 @@ const ModelCore = ({ scene }) => {
         for (let i = 0; i <= xSteps; i++) uniqueX.push(gMin.x + (gMax.x - gMin.x) * i / xSteps);
         for (let i = 0; i <= zSteps; i++) uniqueZ.push(gMin.z + (gMax.z - gMin.z) * i / zSteps);
       }
-      
-      // Segundo pase: eliminar líneas demasiado cercanas entre sí (< 0.3 unidades)
-      const filterClose = (arr, minDist) => {
-        if (arr.length <= 1) return arr;
-        const result = [arr[0]];
-        for (let i = 1; i < arr.length; i++) {
-          if (arr[i] - result[result.length - 1] >= minDist) {
-            result.push(arr[i]);
-          }
-        }
-        return result;
-      };
-      uniqueX = filterClose(uniqueX, 0.3);
-      uniqueZ = filterClose(uniqueZ, 0.3);
       
       // === ALGORITMO DE CLUSTERING GEOMÉTRICO (DISTANCIA 3D) ===
       // Pre-calcular cajas para cada malla
