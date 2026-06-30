@@ -1,6 +1,6 @@
 import React, { Suspense, useRef, useState, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Center, Bounds, PerspectiveCamera, OrthographicCamera, PerformanceMonitor, AdaptiveDpr, Bvh } from '@react-three/drei';
+import { OrbitControls, Center, Bounds, GizmoHelper, GizmoViewcube, PerspectiveCamera, OrthographicCamera } from '@react-three/drei';
 import { ARButton, XR, useXR, useHitTest, Interactive } from '@react-three/xr';
 import { ModelLoader } from './components/ModelLoader';
 import { LoadingOverlay } from './components/LoadingOverlay';
@@ -11,19 +11,7 @@ import { CoordinateGrid } from './components/CoordinateGrid';
 // cámara y orquestación del Canvas.
 
 import { useViewerStore } from '../../store/useViewerStore';
-import { useBounds } from '@react-three/drei';
-
-const BoundsFitter = ({ activeSubModelId }) => {
-  const api = useBounds();
-  React.useEffect(() => {
-    // Small delay to let visibility changes apply before calculating new bounding box
-    const timer = setTimeout(() => {
-      api.refresh().fit();
-    }, 50);
-    return () => clearTimeout(timer);
-  }, [activeSubModelId, api]);
-  return null;
-};
+import { ErrorBoundary } from '../../components/ErrorBoundary';
 
 const SceneContent = ({ modelUrl }) => {
   const { isPresenting, session } = useXR();
@@ -71,17 +59,14 @@ const SceneContent = ({ modelUrl }) => {
               Si no lo tenemos, mostramos el reticle para que el usuario escoja el piso. */}
           {placement ? (
             <group position={placement.position} rotation={placement.rotation} scale={arScale}>
-              <ambientLight intensity={0.4} />
-              <directionalLight position={[10, 10, 10]} intensity={0.8} castShadow={false} />
+              <ambientLight intensity={1} />
+              <directionalLight position={[10, 10, 10]} intensity={1.5} castShadow />
               {showGrid && <CoordinateGrid />}
-              <Bvh firstHitOnly>
-                <Bounds fit margin={1.2}>
-                  <BoundsFitter activeSubModelId={activeSubModelId} />
-                  <Center top onCentered={handleCentered}>
-                    {modelUrl && <ModelLoader url={modelUrl} />}
-                  </Center>
-                </Bounds>
-              </Bvh>
+              <Bounds key={activeSubModelId} fit margin={1.2}>
+                <Center top onCentered={handleCentered}>
+                  {modelUrl && <ModelLoader url={modelUrl} />}
+                </Center>
+              </Bounds>
             </group>
           ) : (
             <mesh ref={reticleRef} rotation-x={-Math.PI / 2}>
@@ -97,18 +82,15 @@ const SceneContent = ({ modelUrl }) => {
   // Vista 3D normal en pantalla: Iluminación estática ultraligera para máximo rendimiento
   return (
     <>
-      <ambientLight intensity={0.4} />
-      <directionalLight position={[10, 10, 10]} intensity={0.8} castShadow={false} />
-      <directionalLight position={[-10, 10, -10]} intensity={0.3} castShadow={false} />
+      <ambientLight intensity={0.7} />
+      <directionalLight position={[10, 10, 10]} intensity={1.2} castShadow={false} />
+      <directionalLight position={[-10, 10, -10]} intensity={0.5} castShadow={false} />
       {showGrid && <CoordinateGrid />}
-      <Bvh firstHitOnly>
-        <Bounds fit margin={1.2}>
-          <BoundsFitter activeSubModelId={activeSubModelId} />
-          <Center top onCentered={handleCentered}>
-            {modelUrl && <ModelLoader url={modelUrl} />}
-          </Center>
-        </Bounds>
-      </Bvh>
+      <Bounds key={activeSubModelId} fit margin={1.2}>
+        <Center top onCentered={handleCentered}>
+          {modelUrl && <ModelLoader url={modelUrl} />}
+        </Center>
+      </Bounds>
     </>
   );
 };
@@ -141,47 +123,61 @@ export const ViewerScene = () => {
       />
       
       {/* Canvas 3D (Desarrollador B) */}
-      <Canvas 
-        shadows={false} 
-        dpr={[0.3, 0.6]} // POTATO MODE: Extreme low resolution for maximum FPS
-        gl={{ 
-          antialias: false, 
-          powerPreference: "low-power", 
-          precision: "lowp",
-          alpha: false, 
-          depth: true,
-          stencil: false, 
-          preserveDrawingBuffer: false
-        }} 
-      >
-        {isOrthographic ? (
-          <OrthographicCamera makeDefault position={[6, 5, 8]} zoom={45} near={-1000} far={100000} />
-        ) : (
-          <PerspectiveCamera makeDefault position={[6, 5, 8]} fov={45} near={0.01} far={100000} />
-        )}
+      <ErrorBoundary>
+        <Canvas 
+          shadows={false} 
+          dpr={[0.5, 1]} // Dynamic resolution down to 0.5x on slow devices
+          frameloop="demand" // Only render when things change, saves massive CPU/GPU
+          gl={{ 
+            antialias: false, 
+            powerPreference: "low-power", // Avoid high-performance forcing which crashes some old phones
+            precision: "lowp",
+            alpha: false, // Disabling alpha channel saves memory
+            depth: true,
+            stencil: false, // Disabling stencil buffer saves memory
+            preserveDrawingBuffer: false
+          }} 
+        >
+          {isOrthographic ? (
+            <OrthographicCamera makeDefault position={[6, 5, 8]} zoom={45} near={-1000} far={100000} />
+          ) : (
+            <PerspectiveCamera makeDefault position={[6, 5, 8]} fov={45} near={0.01} far={100000} />
+          )}
 
-        <XR>
-          <PerformanceMonitor onDecline={() => {}} onIncline={() => {}}>
-            <AdaptiveDpr pixelated />
-          </PerformanceMonitor>
-          <color attach="background" args={['#1e293b']} />
-          <Suspense fallback={<LoadingOverlay />}>
-            <SceneContent modelUrl={modelUrl} />
-          </Suspense>
+          <XR>
+            <color attach="background" args={['#1e293b']} />
+            <Suspense fallback={<LoadingOverlay />}>
+              <SceneContent modelUrl={modelUrl} />
+            </Suspense>
 
-        <OrbitControls 
-          makeDefault 
-          minPolarAngle={0} 
-          maxPolarAngle={Math.PI} // Permite rotar completamente por debajo del modelo
-          rotateSpeed={0.4} // Menos sensibilidad al rotar
-          panSpeed={0.4} // Menos sensibilidad al panear
-          zoomSpeed={0.5} // Menos sensibilidad al hacer zoom
-          enableDamping={true} // Movimiento suave con inercia
-          dampingFactor={0.1}
-        />
+          <OrbitControls 
+            makeDefault 
+            minPolarAngle={0} 
+            maxPolarAngle={Math.PI} // Permite rotar completamente por debajo del modelo
+            rotateSpeed={0.4} // Menos sensibilidad al rotar
+            panSpeed={0.4} // Menos sensibilidad al panear
+            zoomSpeed={0.5} // Menos sensibilidad al hacer zoom
+            enableDamping={true} // Movimiento suave con inercia
+            dampingFactor={0.1}
+          />
 
-        </XR>
-      </Canvas>
+          {/* ViewCube interactivo estilo CAD (arriba a la derecha) */}
+          <GizmoHelper
+            alignment="top-right"
+            margin={[80, 80]}
+          >
+            <GizmoViewcube 
+              color="#334155"
+              strokeColor="#475569"
+              textColor="white"
+              hoverColor="#0ea5e9"
+              opacity={0.85}
+              faces={['Derecha', 'Izquierda', 'Arriba', 'Abajo', 'Frente', 'Atrás']}
+            />
+          </GizmoHelper>
+          </XR>
+        </Canvas>
+      </ErrorBoundary>
     </div>
   );
 };
