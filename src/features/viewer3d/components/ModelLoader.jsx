@@ -373,10 +373,10 @@ const ModelCore = ({ scene }) => {
           instancedMeshes.push(im);
       });
 
-      return { pMeshes: processedMeshes, detectedSubModels, allUniqueX: uniqueX, allUniqueZ: uniqueZ, instancedMeshes, centroid };
+      return { pMeshes: processedMeshes, detectedSubModels, allUniqueX: uniqueX, allUniqueZ: uniqueZ, instancedMeshes, centroid, globalMinY };
     }
     
-    return { pMeshes: [], detectedSubModels: [], allUniqueX: [], allUniqueZ: [], instancedMeshes: [], centroid: new THREE.Vector3() };
+    return { pMeshes: [], detectedSubModels: [], allUniqueX: [], allUniqueZ: [], instancedMeshes: [], centroid: new THREE.Vector3(), globalMinY: 0 };
   }, [scene]);
 
   const activeSubModelId = useViewerStore(state => state.activeSubModelId);
@@ -560,7 +560,7 @@ const ModelCore = ({ scene }) => {
   };
 
   return (
-    <group>
+    <group position={[0, memoData ? -memoData.globalMinY : 0, 0]}>
       <primitive object={scene} visible={true} /> 
       {memoData && memoData.instancedMeshes && memoData.instancedMeshes.map((im, idx) => (
          <primitive 
