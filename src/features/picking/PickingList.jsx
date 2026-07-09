@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useViewerStore } from '../../store/useViewerStore';
+import { checkInventory } from '../../services/erpService';
 import { CheckSquare, Square, PackageCheck, ClipboardList, ShieldCheck } from 'lucide-react';
 
 // Justificación Arquitectónica: Componente dedicado a la consolidación de inventario.
@@ -28,6 +29,17 @@ export const PickingList = () => {
 
   // 2. Estado local para los checkboxes
   const [checkedItems, setCheckedItems] = useState(new Set());
+  const [erpStock, setErpStock] = useState(null);
+
+  useEffect(() => {
+    const fetchStock = async () => {
+      if (consolidatedList.length > 0) {
+        const stock = await checkInventory(consolidatedList);
+        setErpStock(stock);
+      }
+    };
+    fetchStock();
+  }, [consolidatedList]);
 
   const handleToggle = (key) => {
     const next = new Set(checkedItems);
@@ -70,17 +82,28 @@ export const PickingList = () => {
         ) : (
           consolidatedList.map((item) => {
             const isChecked = checkedItems.has(item.name);
+            const stockAvailable = erpStock ? erpStock[item.name] : null;
+            const isMissing = erpStock !== null && stockAvailable !== undefined && stockAvailable < item.quantity;
             
             return (
               <div 
                 key={item.name}
-                onClick={() => handleToggle(item.name)}
-                className={`cursor-pointer transition-all duration-300 rounded-2xl border p-3 md:p-5 shadow-lg relative overflow-hidden flex items-center gap-4 ${
-                  isChecked 
-                    ? 'bg-emerald-900/20 border-emerald-500/50 scale-[0.98] opacity-75' 
-                    : 'bg-slate-100/80 border-slate-300 hover:border-sky-500/50 hover:bg-slate-100'
+                onClick={() => !isMissing && handleToggle(item.name)}
+                className={`transition-all duration-300 rounded-2xl border p-3 md:p-5 shadow-lg relative overflow-hidden flex items-center gap-4 ${
+                  isMissing
+                    ? 'border-red-500 border-2 bg-red-50/50 cursor-not-allowed opacity-80'
+                    : 'cursor-pointer ' + (isChecked 
+                      ? 'bg-emerald-900/20 border-emerald-500/50 scale-[0.98] opacity-75' 
+                      : 'bg-slate-100/80 border-slate-300 hover:border-sky-500/50 hover:bg-slate-100')
                 }`}
               >
+                {/* Etiqueta Flotante de Faltante */}
+                {isMissing && (
+                  <div className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg shadow-md z-20">
+                    FALTANTE EN BODEGA: Solo hay {stockAvailable}
+                  </div>
+                )}
+
                 {/* Glow de selección */}
                 {isChecked && <div className="absolute inset-0 bg-emerald-500/5 mix-blend-overlay"></div>}
                 

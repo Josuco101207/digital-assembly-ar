@@ -13,7 +13,8 @@ export const AssemblyControls = () => {
     isControlsVisible, toggleControls,
     arScale, setArScale,
     isOrthographic, toggleOrthographic,
-    showGrid, toggleGrid
+    showGrid, toggleGrid,
+    isGloveMode
   } = useViewerStore();
 
   const handlePrev = () => {
@@ -63,7 +64,7 @@ export const AssemblyControls = () => {
       </div>
 
       {/* Barra de progreso interactiva (Slider) */}
-      <div className="relative w-full h-4 flex items-center group">
+      <div className={`relative w-full ${isGloveMode ? 'h-10' : 'h-4'} flex items-center group`}>
         <input
           type="range"
           min="1"
@@ -73,7 +74,7 @@ export const AssemblyControls = () => {
           className="absolute z-10 w-full h-full opacity-0 cursor-pointer"
           title="Arrastra para saltar a un paso específico"
         />
-        <div className="relative w-full h-2 bg-slate-200 rounded-full overflow-hidden shadow-inner border border-slate-300">
+        <div className={`relative w-full ${isGloveMode ? 'h-6' : 'h-2'} bg-slate-200 rounded-full overflow-hidden shadow-inner border border-slate-300`}>
           <div 
             className="absolute top-0 left-0 h-full bg-gradient-to-r from-dicrejart-blue to-sky-300 transition-all duration-150 ease-out shadow-[0_0_10px_rgba(0,153,204,0.6)]"
             style={{ width: `${maxAssemblyLevel > 1 ? ((assemblyLevel - 1) / (maxAssemblyLevel - 1)) * 100 : 100}%` }}
@@ -81,9 +82,9 @@ export const AssemblyControls = () => {
         </div>
         {/* Thumb visual */}
         <div 
-          className="absolute w-4 h-4 bg-white border-2 border-dicrejart-blue rounded-full shadow-md pointer-events-none transition-all duration-150 group-hover:scale-125"
+          className={`absolute ${isGloveMode ? 'w-10 h-10' : 'w-4 h-4'} bg-white border-2 border-dicrejart-blue rounded-full shadow-md pointer-events-none transition-all duration-150 group-hover:scale-125`}
           style={{ 
-            left: `calc(${maxAssemblyLevel > 1 ? ((assemblyLevel - 1) / (maxAssemblyLevel - 1)) * 100 : 100}% - 8px)` 
+            left: `calc(${maxAssemblyLevel > 1 ? ((assemblyLevel - 1) / (maxAssemblyLevel - 1)) * 100 : 100}% - ${isGloveMode ? '20px' : '8px'})` 
           }}
         />
       </div>
@@ -156,32 +157,38 @@ export const AssemblyControls = () => {
         <button 
           onClick={handlePrev}
           disabled={assemblyLevel === 1}
-          className="group flex items-center gap-2 justify-center p-3 md:p-4 px-4 md:px-6 rounded-2xl bg-slate-100/80 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-slate-700 border border-slate-200 hover:border-slate-500 shadow-md w-auto font-semibold text-xs md:text-sm"
+          className={`group flex items-center gap-2 justify-center rounded-2xl bg-slate-100/80 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-slate-700 border border-slate-200 hover:border-slate-500 shadow-md w-auto font-semibold ${
+            isGloveMode ? 'py-6 px-10 text-xl' : 'p-3 md:p-4 px-4 md:px-6 text-xs md:text-sm'
+          }`}
         >
-          <SkipBack className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+          <SkipBack className={`${isGloveMode ? 'w-8 h-8' : 'w-5 h-5'} group-hover:-translate-x-1 transition-transform`} />
           <span className="hidden sm:inline">ANTERIOR</span>
         </button>
 
         <button 
           onClick={toggleExplode}
           title="Vista de Despiece"
-          className={`group flex items-center gap-2 px-4 py-3 md:px-6 md:py-4 rounded-2xl transition-all border shadow-md font-semibold tracking-wide text-xs md:text-sm ${
+          className={`group flex items-center gap-2 rounded-2xl transition-all border shadow-md font-semibold tracking-wide ${
+            isGloveMode ? 'py-6 px-10 text-xl' : 'px-4 py-3 md:px-6 md:py-4 text-xs md:text-sm'
+          } ${
             isExploded 
               ? 'bg-dicrejart-red/20 text-sky-400 border-sky-400/50 shadow-[0_0_15px_rgba(14,165,233,0.2)]' 
               : 'bg-slate-100/50 hover:bg-slate-200/80 text-slate-700 border-slate-200/50 hover:border-slate-500'
           }`}
         >
-          <Maximize className={`w-5 h-5 ${isExploded ? 'text-sky-400' : 'text-slate-600 group-hover:text-dicrejart-violet'}`} />
+          <Maximize className={`${isGloveMode ? 'w-8 h-8' : 'w-5 h-5'} ${isExploded ? 'text-sky-400' : 'text-slate-600 group-hover:text-dicrejart-violet'}`} />
           {isExploded ? 'UNIR PIEZAS' : 'DESPIECE'}
         </button>
 
         <button 
           onClick={handleNext}
           disabled={assemblyLevel === maxAssemblyLevel}
-          className="group flex items-center gap-2 justify-center p-3 md:p-4 px-4 md:px-6 rounded-2xl bg-dicrejart-red hover:bg-sky-400 disabled:opacity-30 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 text-dicrejart-violet shadow-[0_0_20px_rgba(14,165,233,0.4)] hover:shadow-[0_0_30px_rgba(56,189,248,0.6)] transition-all border-2 border-sky-300/30 hover:border-white/50 w-auto font-semibold text-xs md:text-sm"
+          className={`group flex items-center gap-2 justify-center rounded-2xl bg-dicrejart-red hover:bg-sky-400 disabled:opacity-30 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 text-dicrejart-violet shadow-[0_0_20px_rgba(14,165,233,0.4)] hover:shadow-[0_0_30px_rgba(56,189,248,0.6)] transition-all border-2 border-sky-300/30 hover:border-white/50 w-auto font-semibold ${
+            isGloveMode ? 'py-6 px-10 text-xl' : 'p-3 md:p-4 px-4 md:px-6 text-xs md:text-sm'
+          }`}
         >
           <span className="hidden sm:inline">SIGUIENTE</span>
-          <SkipForward className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+          <SkipForward className={`${isGloveMode ? 'w-8 h-8' : 'w-5 h-5'} group-hover:translate-x-1 transition-transform`} />
         </button>
       </div>
     </div>
