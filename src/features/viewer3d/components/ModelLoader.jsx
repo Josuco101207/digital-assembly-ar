@@ -485,8 +485,10 @@ const ModelCore = ({ scene }) => {
     });
   }, [assemblyLevel, isExploded, selectedPartId, selectedMeshUuid, isHeatmapMode]);
 
-  // Instanciamos un solo vector temporal fuera del loop para evitar Garbage Collection
+  // Instanciamos vectores y matrices temporales fuera del loop para evitar Garbage Collection masivo (stuttering)
   const _tempVec = new THREE.Vector3();
+  const _imInverse = new THREE.Matrix4();
+  const _instanceMatrix = new THREE.Matrix4();
 
   // Loop de Animación de Alto Rendimiento (60 FPS)
   useFrame((state, delta) => {
@@ -500,19 +502,27 @@ const ModelCore = ({ scene }) => {
 
       const isVisible = (assemblyLevel >= mesh.userData.requiredLevel) && (mesh.userData.isVisibleInSubmodel !== false);
       
-      _tempVec.copy(mesh.userData.originalPosition);
-      if (isExploded) {
-        _tempVec.sub(centroidRef.current);
-        _tempVec.multiplyScalar(2.0);
-        _tempVec.add(centroidRef.current);
-      }
-
       if (isVisible) {
-        // Restaurar posición y escalar normalmente
+        // Restaurar posición original y aplicar explosión si está activa
+        _tempVec.copy(mesh.userData.originalPosition);
+        if (isExploded) {
+          _tempVec.sub(centroidRef.current);
+          _tempVec.multiplyScalar(2.0);
+          _tempVec.add(centroidRef.current);
+        }
         mesh.position.copy(_tempVec);
-        mesh.scale.set(1, 1, 1);
+        
+        // NO alterar scale ni quaternion originales
         mesh.updateWorldMatrix(true, false);
-        mesh.userData.im.setMatrixAt(mesh.userData.instanceId, mesh.matrixWorld);
+        
+        // Matemáticamente CRÍTICO: mesh.matrixWorld es global.
+        // im.setMatrixAt espera una matriz LOCAL relativa al InstancedMesh.
+        // Si hay componentes padre (como <Center> o <group>) trasladando el im, 
+        // debemos anular esa traslación multiplicando por la inversa del im.
+        _imInverse.copy(mesh.userData.im.matrixWorld).invert();
+        _instanceMatrix.multiplyMatrices(_imInverse, mesh.matrixWorld);
+        
+        mesh.userData.im.setMatrixAt(mesh.userData.instanceId, _instanceMatrix);
         matricesNeedUpdate.add(mesh.userData.im);
         mesh.userData.isSleeping = true;
       } else {
