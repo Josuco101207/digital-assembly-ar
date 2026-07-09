@@ -344,12 +344,6 @@ const ModelCore = ({ scene }) => {
           const im = new THREE.InstancedMesh(baseMesh.geometry, baseMaterial, meshes.length);
           im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
           
-          // CRÍTICO: Evita que el componente <Bounds> de la cámara tome en cuenta este InstancedMesh
-          // (ya que sus matrices cambian en runtime y causan que la cámara haga un zoom-out infinito)
-          // El Bounds utilizará la malla invisible original que ya tiene el offset correcto.
-          im.boundingBox = new THREE.Box3();
-          im.boundingSphere = new THREE.Sphere();
-          
           meshes.forEach((mesh, index) => {
               mesh.userData.im = im;
               mesh.userData.instanceId = index;
@@ -366,6 +360,19 @@ const ModelCore = ({ scene }) => {
           im.instanceMatrix.needsUpdate = true;
           if (im.instanceColor) im.instanceColor.needsUpdate = true;
           im.userData.instances = meshes;
+          
+          // Calcular el bounding box/esfera basado en las instancias
+          im.computeBoundingBox();
+          im.computeBoundingSphere();
+          
+          // Trasladar el bounding box/esfera para que coincida con donde se renderizarán realmente 
+          // (ya que heredarán el offset del group cuando corra el useFrame)
+          if (im.boundingBox) {
+              im.boundingBox.translate(new THREE.Vector3(0, -globalMinY, 0));
+          }
+          if (im.boundingSphere) {
+              im.boundingSphere.center.y -= globalMinY;
+          }
           
           // Sombras off
           im.castShadow = false;
