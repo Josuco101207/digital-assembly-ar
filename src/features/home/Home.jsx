@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Plus, Box, Cuboid, ArrowRight, Settings, Loader2, Edit2, Check, X, Trash2 } from 'lucide-react';
-import { getGames, updateGame, deleteGame } from '../../services/supabase/gameService';
+import { getGames, updateGame, deleteGame } from '../../services/firebase/gameService';
 
 export const Home = () => {
   const navigate = useNavigate();

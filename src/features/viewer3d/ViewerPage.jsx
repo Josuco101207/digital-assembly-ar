@@ -6,7 +6,7 @@ import { PickingList } from '../picking/PickingList';
 import { ModelUploader } from './components/ModelUploader';
 import { useViewerStore } from '../../store/useViewerStore';
 import { Layers, Info, Box, Loader2, Camera, ChevronLeft, ChevronRight, CheckCircle2, ListChecks, Cuboid, Upload, ArrowLeft } from 'lucide-react';
-import { getGameById, downloadModelChunked } from '../../services/supabase/gameService';
+import { getGameById, downloadModelChunked } from '../../services/firebase/gameService';
 import localforage from 'localforage';
 
 export const ViewerPage = () => {

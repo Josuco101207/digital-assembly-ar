@@ -10,11 +10,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@gltf-transform/core": "^4.4.1",
     "@react-three/drei": "^9.96.1",
     "@react-three/fiber": "^8.15.12",
     "@react-three/xr": "^5.7.1",
-    "@supabase/supabase-js": "^2.108.2",
+    "dotenv": "^17.4.2",
     "fflate": "^0.8.3",
+    "firebase": "^12.15.0",
     "localforage": "^1.10.0",
     "lucide-react": "^0.323.0",
     "openskp": "^0.2.0",

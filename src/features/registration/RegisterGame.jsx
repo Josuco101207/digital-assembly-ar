@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, UploadCloud, Save, Trash2, AlertCircle, Loader2 } from 'lucide-react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { registerGame, uploadModelChunked } from '../../services/supabase/gameService';
+import { registerGame, uploadModelChunked } from '../../services/firebase/gameService';
 import localforage from 'localforage';
 
 export const RegisterGame = () => {

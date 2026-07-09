@@ -27,7 +27,7 @@ const OBJModel = ({ url }) => {
 
 // Caché global para compartir materiales y ahorrar VRAM
 const materialCache = new Map();
-const defaultLambert = new THREE.MeshLambertMaterial({ color: 0xcccccc });
+const defaultStandard = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.4, metalness: 0.6 });
 
 const ModelCore = ({ scene }) => {
   const selectedPartId = useViewerStore((state) => state.selectedPartId);
@@ -90,16 +90,18 @@ const ModelCore = ({ scene }) => {
 
         if (child.material) {
            if (!materialCache.has(child.material)) {
-              const baseColor = child.material.color || new THREE.Color(0xcccccc);
-              const newMat = new THREE.MeshLambertMaterial({ 
+              const baseColor = child.material.color || new THREE.Color(0x333333);
+              const newMat = new THREE.MeshStandardMaterial({ 
                  color: baseColor,
+                 roughness: 0.4,
+                 metalness: 0.6,
                  side: child.material.side !== undefined ? child.material.side : THREE.DoubleSide
               });
               materialCache.set(child.material, newMat);
            }
            child.material = materialCache.get(child.material);
         } else {
-           child.material = defaultLambert;
+           child.material = defaultStandard;
         }
 
         // LIMPIEZA DE SUFIJOS BÁSICA
@@ -273,13 +275,20 @@ const ModelCore = ({ scene }) => {
       }
       
       // === ALGORITMO DE CLUSTERING GEOMÉTRICO (DISTANCIA 3D) ===
-      // Pre-calcular cajas para cada malla
+      // Pre-calcular cajas para cada malla y calcular tamaño global
+      const globalBox = new THREE.Box3();
       processedMeshes.forEach(m => {
           m.userData.box = new THREE.Box3().setFromObject(m);
+          if (!m.userData.box.isEmpty()) {
+              globalBox.expandByObject(m);
+          }
       });
 
+      const globalSize = globalBox.getSize(new THREE.Vector3());
+      // Tolerancia dinámica: 5% del tamaño máximo del ensamblaje, mínimo 0.5 unidades
+      const DISTANCE_TOLERANCE = Math.max(Math.max(globalSize.x, globalSize.y, globalSize.z) * 0.05, 0.5);
+
       let clusters = [];
-      const DISTANCE_TOLERANCE = 100; // Tolerancia grande para agrupar piezas sueltas de un mismo modelo
 
       processedMeshes.forEach(mesh => {
          const meshBox = mesh.userData.box;

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { fetchMaterialsBOM } from '../services/supabase/bomService';
+import { fetchMaterialsBOM } from '../services/firebase/bomService';
 
 // Justificación Arquitectónica: Usamos Zustand para el estado 3D porque 
 // evita re-renderizados innecesarios del DOM en React cuando cambian valores

@@ -1,7 +1,8 @@
 import React, { Suspense, useRef, useState, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Center, Bounds, GizmoHelper, GizmoViewcube, PerspectiveCamera, OrthographicCamera } from '@react-three/drei';
+import { OrbitControls, Center, Bounds, GizmoHelper, GizmoViewcube, PerspectiveCamera, OrthographicCamera, Bvh, Environment } from '@react-three/drei';
 import { ARButton, XR, useXR, useHitTest, Interactive } from '@react-three/xr';
+import { useBounds } from '@react-three/drei';
 import { ModelLoader } from './components/ModelLoader';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { CoordinateGrid } from './components/CoordinateGrid';
@@ -12,6 +13,31 @@ import { CoordinateGrid } from './components/CoordinateGrid';
 
 import { useViewerStore } from '../../store/useViewerStore';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
+
+const FocusWrapper = ({ children }) => {
+  const api = useBounds();
+  return (
+    <group
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        // Zoom to fit the specific clicked object
+        e.delta <= 2 && api.refresh(e.object).fit();
+      }}
+      onPointerMissed={(e) => {
+        // Double click on background to zoom out and fit everything visible
+        if (e.button === 0 && e.type === 'dblclick') {
+           api.refresh().fit();
+        } else if (e.button === 0) {
+           // Single click on background can also reset, or do nothing.
+           // Let's reset on single click in background for ease of use.
+           api.refresh().fit();
+        }
+      }}
+    >
+      {children}
+    </group>
+  );
+};
 
 const SceneContent = ({ modelUrl }) => {
   const { isPresenting, session } = useXR();
@@ -59,14 +85,19 @@ const SceneContent = ({ modelUrl }) => {
               Si no lo tenemos, mostramos el reticle para que el usuario escoja el piso. */}
           {placement ? (
             <group position={placement.position} rotation={placement.rotation} scale={arScale}>
-              <ambientLight intensity={1} />
+              <ambientLight intensity={0.5} />
               <directionalLight position={[10, 10, 10]} intensity={1.5} castShadow />
+              <Environment preset="city" />
               {showGrid && <CoordinateGrid />}
-              <Bounds key={activeSubModelId} fit margin={1.2}>
-                <Center top onCentered={handleCentered}>
-                  {modelUrl && <ModelLoader url={modelUrl} />}
-                </Center>
-              </Bounds>
+              <Bvh firstHitOnly>
+                <Bounds key={activeSubModelId} fit margin={1.2}>
+                  <Center top onCentered={handleCentered}>
+                    <FocusWrapper>
+                      {modelUrl && <ModelLoader url={modelUrl} />}
+                    </FocusWrapper>
+                  </Center>
+                </Bounds>
+              </Bvh>
             </group>
           ) : (
             <mesh ref={reticleRef} rotation-x={-Math.PI / 2}>
@@ -79,18 +110,22 @@ const SceneContent = ({ modelUrl }) => {
     );
   }
 
-  // Vista 3D normal en pantalla: Iluminación estática ultraligera para máximo rendimiento
+  // Vista 3D normal en pantalla: Iluminación de alta calidad y rendimiento BVH
   return (
     <>
-      <ambientLight intensity={0.7} />
-      <directionalLight position={[10, 10, 10]} intensity={1.2} castShadow={false} />
-      <directionalLight position={[-10, 10, -10]} intensity={0.5} castShadow={false} />
+      <ambientLight intensity={0.5} />
+      <directionalLight position={[10, 10, 10]} intensity={1.5} castShadow={false} />
+      <Environment preset="city" />
       {showGrid && <CoordinateGrid />}
-      <Bounds key={activeSubModelId} fit margin={1.2}>
-        <Center top onCentered={handleCentered}>
-          {modelUrl && <ModelLoader url={modelUrl} />}
-        </Center>
-      </Bounds>
+      <Bvh firstHitOnly>
+        <Bounds key={activeSubModelId} fit margin={1.2}>
+          <Center top onCentered={handleCentered}>
+            <FocusWrapper>
+              {modelUrl && <ModelLoader url={modelUrl} />}
+            </FocusWrapper>
+          </Center>
+        </Bounds>
+      </Bvh>
     </>
   );
 };
@@ -126,12 +161,11 @@ export const ViewerScene = () => {
       <ErrorBoundary>
         <Canvas 
           shadows={false} 
-          dpr={[0.5, 1]} // Dynamic resolution down to 0.5x on slow devices
-          frameloop="demand" // Only render when things change, saves massive CPU/GPU
+          dpr={[1, 2]} // High resolution
           gl={{ 
-            antialias: false, 
-            powerPreference: "low-power", // Avoid high-performance forcing which crashes some old phones
-            precision: "lowp",
+            antialias: true, // Antialiasing activado para eliminar bordes dentados
+            powerPreference: "high-performance",
+            precision: "highp",
             alpha: false, // Disabling alpha channel saves memory
             depth: true,
             stencil: false, // Disabling stencil buffer saves memory
