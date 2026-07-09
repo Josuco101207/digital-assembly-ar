@@ -496,36 +496,20 @@ const ModelCore = ({ scene }) => {
       if (isVisible) {
         // Asegurar la posición correcta
         mesh.position.copy(_tempVec);
+        mesh.scale.set(1, 1, 1);
         
-        // Animación de aparición (Scale IN)
-        if (mesh.scale.x < 1.0) {
-            mesh.scale.lerp(new THREE.Vector3(1, 1, 1), delta * 10);
-            mesh.updateWorldMatrix(true, false);
-            mesh.userData.im.setMatrixAt(mesh.userData.instanceId, mesh.matrixWorld);
-            matricesNeedUpdate.add(mesh.userData.im);
-            mesh.userData.isSleeping = false;
-        } else {
-            mesh.scale.set(1, 1, 1);
-            mesh.updateWorldMatrix(true, false);
-            mesh.userData.im.setMatrixAt(mesh.userData.instanceId, mesh.matrixWorld);
-            matricesNeedUpdate.add(mesh.userData.im);
-            mesh.userData.isSleeping = true;
-        }
+        mesh.updateWorldMatrix(true, false);
+        mesh.userData.im.setMatrixAt(mesh.userData.instanceId, mesh.matrixWorld);
+        matricesNeedUpdate.add(mesh.userData.im);
+        mesh.userData.isSleeping = true;
       } else {
-        // Animación de desaparición (Scale OUT)
-        if (mesh.scale.x > 0.01) {
-           mesh.scale.lerp(new THREE.Vector3(0.0001, 0.0001, 0.0001), delta * 15); 
-           mesh.updateWorldMatrix(true, false);
-           mesh.userData.im.setMatrixAt(mesh.userData.instanceId, mesh.matrixWorld);
-           matricesNeedUpdate.add(mesh.userData.im);
-           mesh.userData.isSleeping = false;
-        } else {
-           mesh.scale.set(0.0001, 0.0001, 0.0001);
-           mesh.updateWorldMatrix(true, false);
-           mesh.userData.im.setMatrixAt(mesh.userData.instanceId, mesh.matrixWorld);
-           matricesNeedUpdate.add(mesh.userData.im);
-           mesh.userData.isSleeping = true;
-        }
+        // Teletransportar a infinito para desaparecer instantáneamente
+        mesh.position.set(0, 999999, 0);
+        mesh.scale.set(0.001, 0.001, 0.001); // Por si acaso
+        mesh.updateWorldMatrix(true, false);
+        mesh.userData.im.setMatrixAt(mesh.userData.instanceId, mesh.matrixWorld);
+        matricesNeedUpdate.add(mesh.userData.im);
+        mesh.userData.isSleeping = true;
       }
 
       // 3. Feedback Visual de Selección OPTIMIZADO (usando setColorAt en InstancedMesh)
