@@ -33,7 +33,7 @@ export const RegisterGame = () => {
       // Subimos en pedazos para evadir límite de 50MB
       const modelUrl = await uploadModelChunked(fileObj, setUploadStatus);
       
-      setUploadStatus('Sincronizando BOM y metadatos con la nube maestra (Supabase)...');
+      setUploadStatus('Sincronizando BOM y metadatos con la nube maestra (Firebase)...');
       const gameData = {
         name,
         sku,
@@ -95,7 +95,7 @@ export const RegisterGame = () => {
         const blob = new Blob([glbBuffer], { type: 'model/gltf-binary' });
         objectUrl = URL.createObjectURL(blob);
         
-        // Generar un nuevo File para que se suba a Supabase como GLB
+        // Generar un nuevo File para que se suba a Firebase como GLB
         finalFileObj = new File([blob], file.name.replace(/\.skp$/i, '.glb'), { type: 'model/gltf-binary' });
         setUploadStatus(''); // Limpiar estado de carga
       } else {
