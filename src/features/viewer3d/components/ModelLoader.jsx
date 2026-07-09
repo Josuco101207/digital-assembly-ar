@@ -344,10 +344,43 @@ const ModelCore = ({ scene }) => {
           m.userData.box = new THREE.Box3().setFromObject(m);
       });
 
-      return { pMeshes: processedMeshes, detectedSubModels, allUniqueX: uniqueX, allUniqueZ: uniqueZ };
+      // === INSTANCED MESH GENERATION ===
+      const instancedMeshes = [];
+      geometryGroups.forEach((meshes, sig) => {
+          const baseMesh = meshes[0];
+          // Material base blanco para que setColorAt funcione correctamente
+          const baseMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, metalness: 0.6 });
+          const im = new THREE.InstancedMesh(baseMesh.geometry, baseMaterial, meshes.length);
+          im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+          
+          meshes.forEach((mesh, index) => {
+              mesh.userData.im = im;
+              mesh.userData.instanceId = index;
+              
+              mesh.updateWorldMatrix(true, false);
+              im.setMatrixAt(index, mesh.matrixWorld);
+              
+              const color = mesh.material && mesh.material.color ? mesh.material.color : new THREE.Color(0x333333);
+              im.setColorAt(index, color);
+              
+              mesh.visible = false; // El original no se dibuja
+          });
+          
+          im.instanceMatrix.needsUpdate = true;
+          if (im.instanceColor) im.instanceColor.needsUpdate = true;
+          im.userData.instances = meshes;
+          
+          // Sombras off
+          im.castShadow = false;
+          im.receiveShadow = false;
+          
+          instancedMeshes.push(im);
+      });
+
+      return { pMeshes: processedMeshes, detectedSubModels, allUniqueX: uniqueX, allUniqueZ: uniqueZ, instancedMeshes };
     }
     
-    return { pMeshes: [], detectedSubModels: [], allUniqueX: [], allUniqueZ: [] };
+    return { pMeshes: [], detectedSubModels: [], allUniqueX: [], allUniqueZ: [], instancedMeshes: [] };
   }, [scene]);
 
   const activeSubModelId = useViewerStore(state => state.activeSubModelId);
@@ -367,20 +400,18 @@ const ModelCore = ({ scene }) => {
   // Filter meshes whenever active submodel changes
   useEffect(() => {
       if (!memoData || memoData.pMeshes.length === 0) return;
-      const { pMeshes, detectedSubModels, allUniqueX, allUniqueZ } = memoData;
+      const { pMeshes, detectedSubModels, allUniqueX, allUniqueZ, instancedMeshes } = memoData;
       
       const activeSub = detectedSubModels.find(s => s.id === activeSubModelId);
       
       pMeshes.forEach(m => {
-         if (activeSub) {
-            if (m.userData.subModelId !== activeSub.id) {
-               if (m.parent) m.parent.remove(m);
-            } else {
-               if (!m.parent && m.userData.originalParent) m.userData.originalParent.add(m);
-            }
-         } else {
-            if (!m.parent && m.userData.originalParent) m.userData.originalParent.add(m);
+         let isVisibleInSubmodel = true;
+         if (activeSub && m.userData.subModelId !== activeSub.id) {
+             isVisibleInSubmodel = false;
          }
+         
+         m.userData.isVisibleInSubmodel = isVisibleInSubmodel;
+         m.userData.isSleeping = false; // Despertar para aplicar escala
       });
       
       if (activeSub) {
@@ -397,19 +428,13 @@ const ModelCore = ({ scene }) => {
          useViewerStore.getState().setGridLines({ x: allUniqueX, z: allUniqueZ });
       }
 
-      // Aplicar la opacidad almacenada en el estado a los nuevos materiales
+      // Aplicar la opacidad almacenada en el estado a los nuevos materiales de InstancedMesh
       const currentOpacity = useViewerStore.getState().modelOpacity;
       const isTrans = currentOpacity < 1.0;
-      pMeshes.forEach(mesh => {
-        if (mesh.material) {
-          mesh.material.transparent = isTrans;
-          mesh.material.opacity = currentOpacity;
-          mesh.material.needsUpdate = true;
-        }
-        if (mesh.userData.originalMaterial) {
-          mesh.userData.originalMaterial.transparent = isTrans;
-          mesh.userData.originalMaterial.opacity = currentOpacity;
-        }
+      instancedMeshes.forEach(im => {
+         im.material.transparent = isTrans;
+         im.material.opacity = currentOpacity;
+         im.material.needsUpdate = true;
       });
 
       meshesRef.current = pMeshes;
@@ -426,7 +451,9 @@ const ModelCore = ({ scene }) => {
           const newId = `${m.userData.id}_#${index}`;
           m.userData.id = newId;
           m.userData.selectionState = 0; // Reset visual state
-          m.material = m.userData.originalMaterial; // Restore original material
+          const c = m.userData.originalMaterial && m.userData.originalMaterial.color ? m.userData.originalMaterial.color : new THREE.Color(0x333333);
+          m.userData.im.setColorAt(m.userData.instanceId, c);
+          m.userData.im.instanceColor.needsUpdate = true;
           newIds.push(newId);
           index++;
         }
@@ -449,12 +476,15 @@ const ModelCore = ({ scene }) => {
 
   // Loop de Animación de Alto Rendimiento (60 FPS)
   useFrame((state, delta) => {
+    let matricesNeedUpdate = new Set();
+    let colorsNeedUpdate = new Set();
+
     meshesRef.current.forEach((mesh) => {
       // Modo hibernación para no matar la batería/CPU de la tablet si ya llegó a su sitio
       if (mesh.userData.isSleeping) return;
 
       // 1. Lógica de Secuencia de Armado (Caída en Y)
-      const isVisible = assemblyLevel >= mesh.userData.requiredLevel;
+      const isVisible = (assemblyLevel >= mesh.userData.requiredLevel) && (mesh.userData.isVisibleInSubmodel !== false);
       
       // Reutilizamos el vector en lugar de usar .clone() que mata la memoria
       _tempVec.copy(mesh.userData.originalPosition);
@@ -465,32 +495,53 @@ const ModelCore = ({ scene }) => {
       }
 
       if (isVisible) {
-        mesh.visible = true;
+        mesh.scale.set(1, 1, 1);
         const dist = mesh.position.distanceToSquared(_tempVec);
         if (dist > 0.0001) {
           mesh.position.lerp(_tempVec, delta * 5);
-          mesh.updateMatrix();
+          mesh.updateWorldMatrix(true, false);
+          mesh.userData.im.setMatrixAt(mesh.userData.instanceId, mesh.matrixWorld);
+          matricesNeedUpdate.add(mesh.userData.im);
         } else {
           if (dist > 0) {
             mesh.position.copy(_tempVec); // Fijar si ya llegó
-            mesh.updateMatrix();
+            mesh.updateWorldMatrix(true, false);
+            mesh.userData.im.setMatrixAt(mesh.userData.instanceId, mesh.matrixWorld);
+            matricesNeedUpdate.add(mesh.userData.im);
           }
           // ¡Llegó a su destino! Poner a dormir la pieza
           mesh.userData.isSleeping = true;
         }
       } else {
-        mesh.visible = false;
-        // La pieza espera arriba en el aire
-        _tempVec.y += 10;
-        const dist = mesh.position.distanceToSquared(_tempVec);
-        if (dist > 0) {
-          mesh.position.copy(_tempVec);
-          mesh.updateMatrix();
+        if (mesh.userData.isVisibleInSubmodel === false) {
+           mesh.scale.set(0, 0, 0); // Ocultar instantáneamente
+           mesh.updateWorldMatrix(true, false);
+           mesh.userData.im.setMatrixAt(mesh.userData.instanceId, mesh.matrixWorld);
+           matricesNeedUpdate.add(mesh.userData.im);
+           mesh.userData.isSleeping = true;
+        } else {
+           // La pieza espera arriba en el aire
+           _tempVec.y += 10;
+           mesh.scale.set(1, 1, 1);
+           const dist = mesh.position.distanceToSquared(_tempVec);
+           if (dist > 0.0001) {
+              mesh.position.lerp(_tempVec, delta * 5);
+              mesh.updateWorldMatrix(true, false);
+              mesh.userData.im.setMatrixAt(mesh.userData.instanceId, mesh.matrixWorld);
+              matricesNeedUpdate.add(mesh.userData.im);
+           } else {
+              if (dist > 0) {
+                 mesh.position.copy(_tempVec);
+                 mesh.updateWorldMatrix(true, false);
+                 mesh.userData.im.setMatrixAt(mesh.userData.instanceId, mesh.matrixWorld);
+                 matricesNeedUpdate.add(mesh.userData.im);
+              }
+              mesh.userData.isSleeping = true;
+           }
         }
-        mesh.userData.isSleeping = true;
       }
 
-      // 3. Feedback Visual de Selección OPTIMIZADO con Distinción Principal/Secundaria
+      // 3. Feedback Visual de Selección OPTIMIZADO (usando setColorAt en InstancedMesh)
       const isSelectedGroup = selectedPartId === mesh.userData.id;
       const isSelectedPrimary = selectedMeshUuid === mesh.uuid;
       
@@ -498,32 +549,28 @@ const ModelCore = ({ scene }) => {
       if (isSelectedPrimary) selectionState = 2;
       else if (isSelectedGroup) selectionState = 1;
       
-      // Solo hacer el cambio de material si el estado acaba de cambiar
+      // Solo hacer el cambio de color si el estado acaba de cambiar
       if (selectionState !== mesh.userData.selectionState) {
         mesh.userData.selectionState = selectionState;
         
-        if (selectionState === 2 && mesh.userData.originalMaterial) {
-          // Principal: Amarillo Neón (Muy fuerte)
-          if (!mesh.userData.primaryMaterial) {
-            mesh.userData.primaryMaterial = mesh.userData.originalMaterial.clone();
-            mesh.userData.primaryMaterial.emissive = new THREE.Color(0xfacc15); // Amarillo brillante
-            mesh.userData.primaryMaterial.emissiveIntensity = 0.9;
-          }
-          mesh.material = mesh.userData.primaryMaterial;
-        } else if (selectionState === 1 && mesh.userData.originalMaterial) {
-          // Grupo (Idénticos): Cian Fuerte (Muy visible)
-          if (!mesh.userData.groupMaterial) {
-            mesh.userData.groupMaterial = mesh.userData.originalMaterial.clone();
-            mesh.userData.groupMaterial.emissive = new THREE.Color(0x06b6d4); // Cian vibrante
-            mesh.userData.groupMaterial.emissiveIntensity = 0.7; // Subimos la intensidad para que sea súper visible
-          }
-          mesh.material = mesh.userData.groupMaterial;
-        } else {
-          // Normal
-          mesh.material = mesh.userData.originalMaterial;
+        let targetColor = mesh.userData.originalMaterial && mesh.userData.originalMaterial.color 
+            ? mesh.userData.originalMaterial.color 
+            : new THREE.Color(0x333333);
+            
+        if (selectionState === 2) {
+            targetColor = new THREE.Color(0xfacc15); // Amarillo vibrante
+        } else if (selectionState === 1) {
+            targetColor = new THREE.Color(0x06b6d4); // Cian vibrante
         }
+        
+        mesh.userData.im.setColorAt(mesh.userData.instanceId, targetColor);
+        colorsNeedUpdate.add(mesh.userData.im);
       }
     });
+
+    // Subir a la GPU las matrices y colores que cambiaron en este frame
+    matricesNeedUpdate.forEach(im => im.instanceMatrix.needsUpdate = true);
+    colorsNeedUpdate.forEach(im => im.instanceColor.needsUpdate = true);
   });
 
   // Delegación de eventos R3F: intercepta el click del objeto intersectado
@@ -532,7 +579,13 @@ const ModelCore = ({ scene }) => {
     if (e.delta > 2) return; 
 
     e.stopPropagation(); // Evita clics a través de la geometría
-    if (e.object && e.object.userData.id) {
+    if (e.instanceId !== undefined && e.object.userData.instances) {
+      const originalMesh = e.object.userData.instances[e.instanceId];
+      if (originalMesh && originalMesh.userData.id) {
+        setSelectedPartId(originalMesh.userData.id, originalMesh.uuid);
+      }
+    } else if (e.object && e.object.userData.id) {
+      // Fallback por si acaso
       setSelectedPartId(e.object.userData.id, e.object.uuid);
     }
   };
@@ -542,10 +595,16 @@ const ModelCore = ({ scene }) => {
   };
 
   return (
-    <primitive 
-      object={scene} 
-      onClick={handleClick}
-      onPointerMissed={handlePointerMissed}
-    />
+    <group>
+      <primitive object={scene} visible={true} /> 
+      {memoData && memoData.instancedMeshes && memoData.instancedMeshes.map((im, idx) => (
+         <primitive 
+           key={`im_${idx}`} 
+           object={im} 
+           onClick={handleClick}
+           onPointerMissed={handlePointerMissed}
+         />
+      ))}
+    </group>
   );
 };
