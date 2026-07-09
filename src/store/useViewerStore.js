@@ -107,8 +107,4 @@ export const useViewerStore = create((set) => ({
   // Opacidad global del modelo 3D (0.0 a 1.0)
   modelOpacity: 1.0,
   setModelOpacity: (opacity) => set({ modelOpacity: opacity }),
-
-  // Modo Guantes (Ergonomía)
-  isGloveMode: false,
-  toggleGloveMode: () => set((state) => ({ isGloveMode: !state.isGloveMode })),
 }));
