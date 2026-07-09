@@ -4,7 +4,7 @@
 
 @layer base {
   html, body, #root {
-    @apply min-h-screen w-full m-0 p-0 overflow-x-hidden bg-industrial-dark text-slate-200;
+    @apply min-h-screen w-full m-0 p-0 overflow-x-hidden bg-slate-50 text-slate-800;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 }
