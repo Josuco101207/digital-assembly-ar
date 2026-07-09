@@ -24,12 +24,14 @@ const FocusWrapper = ({ children }) => {
         e.delta <= 2 && api.refresh(e.object).fit();
       }}
       onPointerMissed={(e) => {
+        // Si fue un arrastre (paneo de cámara), ignorar.
+        if (e.type !== 'dblclick' && e.delta > 2) return;
+
         // Double click on background to zoom out and fit everything visible
         if (e.button === 0 && e.type === 'dblclick') {
            api.refresh().fit();
         } else if (e.button === 0) {
-           // Single click on background can also reset, or do nothing.
-           // Let's reset on single click in background for ease of use.
+           // Click simple en el fondo resetea la cámara, pero solo si no arrastró
            api.refresh().fit();
         }
       }}

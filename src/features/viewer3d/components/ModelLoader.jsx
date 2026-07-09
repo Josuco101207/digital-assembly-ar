@@ -528,6 +528,9 @@ const ModelCore = ({ scene }) => {
 
   // Delegación de eventos R3F: intercepta el click del objeto intersectado
   const handleClick = (e) => {
+    // Si el usuario movió el ratón/dedo más de 2 píxeles, fue un arrastre (paneo/rotación), NO un clic.
+    if (e.delta > 2) return; 
+
     e.stopPropagation(); // Evita clics a través de la geometría
     if (e.object && e.object.userData.id) {
       setSelectedPartId(e.object.userData.id, e.object.uuid);
