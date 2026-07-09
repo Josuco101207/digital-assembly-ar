@@ -120,12 +120,20 @@ const ModelCore = ({ scene }) => {
 
         child.userData.tempName = cleanName;
 
-        // Computar firma geométrica para agrupar clones perfectos y evitar bugs de Inventor
+        // Computar firma geométrica estricta para agrupar clones perfectos y evitar piezas mezcladas/explotadas
         let gSize = new THREE.Vector3();
         if (!child.geometry.boundingBox) child.geometry.computeBoundingBox();
-        child.geometry.boundingBox.getSize(gSize);
+        const bx = child.geometry.boundingBox;
+        bx.getSize(gSize);
         const dims = [gSize.x, gSize.y, gSize.z].sort((a,b) => a-b);
-        const sig = `${child.geometry.attributes.position.count}_${dims[0].toFixed(3)}_${dims[1].toFixed(3)}_${dims[2].toFixed(3)}`;
+        
+        let vSample = "0";
+        if (child.geometry.attributes.position && child.geometry.attributes.position.count > 0) {
+           const arr = child.geometry.attributes.position.array;
+           vSample = `${arr[0].toFixed(3)}_${arr[1].toFixed(3)}_${arr[2].toFixed(3)}`;
+        }
+        
+        const sig = `${child.geometry.attributes.position.count}_${dims[0].toFixed(3)}_${dims[1].toFixed(3)}_${dims[2].toFixed(3)}_${bx.min.x.toFixed(3)}_${bx.min.y.toFixed(3)}_${bx.min.z.toFixed(3)}_${vSample}`;
         
         if (!geometryGroups.has(sig)) geometryGroups.set(sig, []);
         geometryGroups.get(sig).push(child);
@@ -405,6 +413,18 @@ const ModelCore = ({ scene }) => {
         useViewerStore.getState().setSubModels([]);
         useViewerStore.getState().setActiveSubModelId(null);
      }
+     
+     // PREVENIR WebGL Context Lost: Limpiar memoria GPU al desmontar o recargar
+     return () => {
+        if (memoData && memoData.instancedMeshes) {
+            memoData.instancedMeshes.forEach(im => {
+                if (im.geometry) im.geometry.dispose();
+            });
+        }
+        // Limpiar el caché de materiales
+        materialCache.forEach(mat => mat.dispose());
+        materialCache.clear();
+     };
   }, [memoData, setMaxAssemblyLevel]);
 
   // Filter meshes whenever active submodel changes
