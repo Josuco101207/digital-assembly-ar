@@ -588,8 +588,10 @@ const ModelCore = ({ scene }) => {
   };
 
   return (
-    <group position={[0, memoData ? -memoData.globalMinY : 0, 0]}>
-      <primitive object={scene} visible={true} /> 
+    <>
+      <group position={[0, memoData ? -memoData.globalMinY : 0, 0]}>
+        <primitive object={scene} visible={true} /> 
+      </group>
       {memoData && memoData.instancedMeshes && memoData.instancedMeshes.map((im, idx) => (
          <primitive 
            key={`im_${idx}`} 
@@ -598,6 +600,6 @@ const ModelCore = ({ scene }) => {
            onPointerMissed={handlePointerMissed}
          />
       ))}
-    </group>
+    </>
   );
 };
