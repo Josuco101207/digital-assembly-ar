@@ -32,6 +32,20 @@ export const useViewerStore = create((set) => ({
   selectedMeshUuid: null,
   setSelectedPartId: (id, uuid = null) => set({ selectedPartId: id, selectedMeshUuid: uuid }),
 
+  // Solicitud manual para separar piezas agrupadas
+  splitRequest: null,
+  setSplitRequest: (id) => set({ splitRequest: id }),
+  applySplitToBOM: (oldId, newIds) => set(state => {
+    const oldItem = state.assemblyBOM.find(item => item.id === oldId);
+    if (!oldItem) return { splitRequest: null, selectedPartId: null, selectedMeshUuid: null };
+    const newBOM = state.assemblyBOM.filter(item => item.id !== oldId);
+    newIds.forEach((id, idx) => {
+       // Opcional: Podríamos sumar al nombre para que se entienda que es copia
+       newBOM.push({ ...oldItem, id: id, qty: 1 });
+    });
+    return { assemblyBOM: newBOM, splitRequest: null, selectedPartId: null, selectedMeshUuid: null };
+  }),
+
   // Nivel de secuencia de armado actual (1, 2, 3...)
   assemblyLevel: 1,
   setAssemblyLevel: (level) => set({ assemblyLevel: level }),

@@ -415,6 +415,28 @@ const ModelCore = ({ scene }) => {
       meshesRef.current = pMeshes;
   }, [memoData, activeSubModelId, modelOpacity]);
 
+  const splitRequest = useViewerStore(state => state.splitRequest);
+
+  useEffect(() => {
+    if (splitRequest && meshesRef.current.length > 0) {
+      const newIds = [];
+      let index = 1;
+      meshesRef.current.forEach(m => {
+        if (m.userData.id === splitRequest) {
+          const newId = `${m.userData.id}_#${index}`;
+          m.userData.id = newId;
+          m.userData.selectionState = 0; // Reset visual state
+          m.material = m.userData.originalMaterial; // Restore original material
+          newIds.push(newId);
+          index++;
+        }
+      });
+      if (newIds.length > 0) {
+        useViewerStore.getState().applySplitToBOM(splitRequest, newIds);
+      }
+    }
+  }, [splitRequest]);
+
   // Instanciamos un solo vector temporal fuera del loop para evitar Garbage Collection
   const _tempVec = new THREE.Vector3();
 

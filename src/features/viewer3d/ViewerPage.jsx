@@ -5,7 +5,7 @@ import { AssemblyControls } from '../assembly/controls/AssemblyControls';
 import { PickingList } from '../picking/PickingList';
 import { ModelUploader } from './components/ModelUploader';
 import { useViewerStore } from '../../store/useViewerStore';
-import { Layers, Info, Box, Loader2, Camera, ChevronLeft, ChevronRight, CheckCircle2, ListChecks, Cuboid, Upload, ArrowLeft } from 'lucide-react';
+import { Layers, Info, Box, Loader2, Camera, ChevronLeft, ChevronRight, CheckCircle2, ListChecks, Cuboid, Upload, ArrowLeft, Scissors } from 'lucide-react';
 import { getGameById, downloadModelChunked } from '../../services/firebase/gameService';
 import localforage from 'localforage';
 
@@ -29,6 +29,7 @@ export const ViewerPage = () => {
   const subModels = useViewerStore((state) => state.subModels);
   const activeSubModelId = useViewerStore((state) => state.activeSubModelId);
   const setActiveSubModelId = useViewerStore((state) => state.setActiveSubModelId);
+  const setSplitRequest = useViewerStore((state) => state.setSplitRequest);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showToast, setShowToast] = useState(false);
@@ -272,9 +273,19 @@ export const ViewerPage = () => {
                 </div>
                 
                 <div className="space-y-4 text-sm">
-                  <div className="flex justify-between items-center bg-slate-900/50 p-3 rounded-lg border border-slate-700/50 mb-4">
-                    <p className="text-slate-400 text-[10px] uppercase tracking-wider">Cantidad Requerida</p>
-                    <p className="font-mono font-bold text-industrial-accent text-xl">x{partData.quantity}</p>
+                  <div className="flex flex-col gap-2 mb-4">
+                    <div className="flex justify-between items-center bg-slate-900/50 p-3 rounded-lg border border-slate-700/50">
+                      <p className="text-slate-400 text-[10px] uppercase tracking-wider">Cantidad Requerida</p>
+                      <p className="font-mono font-bold text-industrial-accent text-xl">x{partData.quantity}</p>
+                    </div>
+                    {partData.quantity > 1 && (
+                      <button 
+                        onClick={() => setSplitRequest(selectedPartId)}
+                        className="flex items-center justify-center gap-2 w-full py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg text-xs font-semibold transition-colors"
+                      >
+                        <Scissors className="w-3 h-3" /> Separar Grupo
+                      </button>
+                    )}
                   </div>
                   <div>
                     <p className="text-slate-400 text-[10px] uppercase tracking-wider mb-1">Tipo / Categoría</p>
