@@ -90,7 +90,7 @@ const SceneContent = ({ modelUrl }) => {
               <ambientLight intensity={0.5} />
               <directionalLight position={[10, 10, 10]} intensity={1.5} castShadow />
               <Environment preset="city" />
-              {showGrid && <CoordinateGrid />}
+              
               <Bvh firstHitOnly>
                 <Bounds key={activeSubModelId} fit margin={1.2}>
                   <Center top onCentered={handleCentered}>
@@ -118,7 +118,7 @@ const SceneContent = ({ modelUrl }) => {
       <ambientLight intensity={0.5} />
       <directionalLight position={[10, 10, 10]} intensity={1.5} castShadow={false} />
       <Environment preset="city" />
-      {showGrid && <CoordinateGrid />}
+      
       <Bvh firstHitOnly>
         <Bounds key={activeSubModelId} fit margin={1.2}>
           <Center top onCentered={handleCentered}>
