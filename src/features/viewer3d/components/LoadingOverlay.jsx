@@ -11,19 +11,19 @@ export const LoadingOverlay = () => {
 
   return (
     <Html center>
-      <div className="flex flex-col items-center justify-center p-8 bg-industrial-dark/95 rounded-2xl border border-slate-700 shadow-[0_0_50px_rgba(0,0,0,0.5)] backdrop-blur-md w-64">
-        <Loader2 className="w-12 h-12 text-industrial-accent animate-spin mb-4" />
-        <h3 className="text-white font-bold text-lg mb-1 whitespace-nowrap">Cargando Modelo 3D</h3>
-        <p className="text-slate-400 text-sm mb-4 text-center">Optimizando texturas y geometría...</p>
+      <div className="flex flex-col items-center justify-center p-8 bg-white/95 rounded-2xl border border-slate-300 shadow-[0_0_50px_rgba(0,0,0,0.5)] backdrop-blur-md w-64">
+        <Loader2 className="w-12 h-12 text-dicrejart-violet animate-spin mb-4" />
+        <h3 className="text-dicrejart-violet font-bold text-lg mb-1 whitespace-nowrap">Cargando Modelo 3D</h3>
+        <p className="text-slate-600 text-sm mb-4 text-center">Optimizando texturas y geometría...</p>
         
         {/* Barra de progreso de descarga */}
-        <div className="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden border border-slate-700">
+        <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden border border-slate-300">
           <div 
-            className="bg-industrial-accent h-2.5 rounded-full transition-all duration-300" 
+            className="bg-dicrejart-red h-2.5 rounded-full transition-all duration-300" 
             style={{ width: `${progress}%` }}
           />
         </div>
-        <p className="text-industrial-accent font-mono text-xs mt-2 font-bold">{progress.toFixed(0)}%</p>
+        <p className="text-dicrejart-violet font-mono text-xs mt-2 font-bold">{progress.toFixed(0)}%</p>
       </div>
     </Html>
   );

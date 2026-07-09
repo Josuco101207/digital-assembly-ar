@@ -41,6 +41,8 @@ const ModelCore = ({ scene }) => {
 
   // Referencia mutable para iterar meshes eficientemente en useFrame sin re-renderizar
   const meshesRef = useRef([]);
+  const centroidRef = useRef(new THREE.Vector3());
+
 
   // Aplicar opacidad al cambiar el slider
   useEffect(() => {
@@ -198,19 +200,10 @@ const ModelCore = ({ scene }) => {
       
       const totalHeight = globalMaxY - globalMinY;
       
-      // Al solicitar el usuario que vaya de "poco a poco aunque sean varios pasos", 
-      // utilizamos una tolerancia vertical minúscula (2 cm aprox) en lugar de dividir en 6 bloques.
-      const dynamicTolerance = 0.02;
-
-      let currentLevel = 1;
-      let currentLevelMinY = globalMinY;
+      let currentLevel = 0;
 
       processedMeshes.forEach((mesh) => {
-        // Si la pieza empieza significativamente más arriba que el grupo actual, es un nuevo nivel
-        if (mesh.userData.bottomY > currentLevelMinY + dynamicTolerance) {
-          currentLevel++;
-          currentLevelMinY = mesh.userData.bottomY;
-        }
+        currentLevel++;
         mesh.userData.requiredLevel = currentLevel;
       });
 
@@ -283,6 +276,9 @@ const ModelCore = ({ scene }) => {
               globalBox.expandByObject(m);
           }
       });
+
+      const centroid = new THREE.Vector3();
+      globalBox.getCenter(centroid);
 
       const globalSize = globalBox.getSize(new THREE.Vector3());
       // Tolerancia dinámica: 5% del tamaño máximo del ensamblaje, mínimo 0.5 unidades
@@ -377,10 +373,10 @@ const ModelCore = ({ scene }) => {
           instancedMeshes.push(im);
       });
 
-      return { pMeshes: processedMeshes, detectedSubModels, allUniqueX: uniqueX, allUniqueZ: uniqueZ, instancedMeshes };
+      return { pMeshes: processedMeshes, detectedSubModels, allUniqueX: uniqueX, allUniqueZ: uniqueZ, instancedMeshes, centroid };
     }
     
-    return { pMeshes: [], detectedSubModels: [], allUniqueX: [], allUniqueZ: [], instancedMeshes: [] };
+    return { pMeshes: [], detectedSubModels: [], allUniqueX: [], allUniqueZ: [], instancedMeshes: [], centroid: new THREE.Vector3() };
   }, [scene]);
 
   const activeSubModelId = useViewerStore(state => state.activeSubModelId);
@@ -400,7 +396,9 @@ const ModelCore = ({ scene }) => {
   // Filter meshes whenever active submodel changes
   useEffect(() => {
       if (!memoData || memoData.pMeshes.length === 0) return;
-      const { pMeshes, detectedSubModels, allUniqueX, allUniqueZ, instancedMeshes } = memoData;
+      const { pMeshes, detectedSubModels, allUniqueX, allUniqueZ, instancedMeshes, centroid } = memoData;
+      
+      if (centroid) centroidRef.current.copy(centroid);
       
       const activeSub = detectedSubModels.find(s => s.id === activeSubModelId);
       
@@ -489,9 +487,10 @@ const ModelCore = ({ scene }) => {
       // Reutilizamos el vector en lugar de usar .clone() que mata la memoria
       _tempVec.copy(mesh.userData.originalPosition);
       if (isExploded) {
-        // Expandimos radialmente pero solo en X y Z para no arruinar el sorting Y
-        _tempVec.x *= 1.5; 
-        _tempVec.z *= 1.5;
+        // Calculamos la dirección desde el centroide y aplicamos el factor de explosión (2.0)
+        _tempVec.sub(centroidRef.current);
+        _tempVec.multiplyScalar(2.0);
+        _tempVec.add(centroidRef.current);
       }
 
       if (isVisible) {

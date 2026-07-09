@@ -7,12 +7,20 @@ export default {
   theme: {
     extend: {
       colors: {
-        industrial: {
-          dark: '#0f172a',
-          base: '#1e293b',
-          light: '#334155',
-          accent: '#0ea5e9'
+        dicrejart: {
+          violet: '#330066',
+          red: '#FF3300',
+          blue: '#0099CC',
+          orange: '#FF9933',
+          yellow: '#FFCC00',
+          magenta: '#990099',
+          purple: '#9933FF',
+          dark: '#1e003b' // Variación oscura para fondos
         }
+      },
+      fontFamily: {
+        sans: ['Inter', 'SF Pro', 'sans-serif'],
+        heading: ['Outfit', 'sans-serif']
       }
     },
   },

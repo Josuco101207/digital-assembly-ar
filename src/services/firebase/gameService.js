@@ -2,6 +2,7 @@ import { db, storage } from './config';
 import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getBytes, deleteObject, getDownloadURL } from 'firebase/storage';
 import * as fflate from 'fflate';
+import localforage from 'localforage';
 
 const CHUNK_SIZE = 40 * 1024 * 1024; // 40MB chunks
 
@@ -36,6 +37,16 @@ export const uploadModelChunked = async (file, setUploadStatus) => {
 };
 
 export const downloadModelChunked = async (modelUrl, setUploadStatus) => {
+  try {
+    const cachedBlob = await localforage.getItem(modelUrl);
+    if (cachedBlob) {
+      if (setUploadStatus) setUploadStatus('Cargando modelo 3D desde caché local...');
+      return URL.createObjectURL(cachedBlob);
+    }
+  } catch (err) {
+    console.warn("Error leyendo caché local:", err);
+  }
+
   const dataString = modelUrl.split('chunked://')[1];
   const [prefix, totalChunksStr] = dataString.split('|');
   const totalChunks = parseInt(totalChunksStr, 10);
@@ -75,6 +86,13 @@ export const downloadModelChunked = async (modelUrl, setUploadStatus) => {
   
   const decompressedData = fflate.gunzipSync(combinedData);
   const blob = new Blob([decompressedData.buffer]);
+  
+  try {
+    if (setUploadStatus) setUploadStatus('Guardando modelo en caché local...');
+    await localforage.setItem(modelUrl, blob);
+  } catch (err) {
+    console.warn("Error guardando en caché local:", err);
+  }
   
   return URL.createObjectURL(blob);
 };

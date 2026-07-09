@@ -137,7 +137,7 @@ export const ViewerScene = () => {
   const isOrthographic = useViewerStore((state) => state.isOrthographic);
 
   return (
-    <div className="w-full h-full bg-industrial-base relative">
+    <div className="w-full h-full bg-slate-50 relative">
       <ARButton 
         sessionInit={{ 
           requiredFeatures: [], 

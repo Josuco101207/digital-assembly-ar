@@ -86,21 +86,21 @@ export const ModelUploader = () => {
   };
 
   return (
-    <div className="w-screen h-screen bg-industrial-dark flex flex-col items-center justify-center p-6 text-slate-200">
+    <div className="w-screen h-screen bg-white flex flex-col items-center justify-center p-6 text-slate-800">
       <div className="max-w-2xl w-full">
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-bold text-white mb-3">Digital Twin Inicializador</h1>
-          <p className="text-slate-400 font-mono">BOM_INSPECTION_SYS // Módulo de Carga</p>
+          <h1 className="text-4xl font-bold text-dicrejart-violet mb-3">Digital Twin Inicializador</h1>
+          <p className="text-slate-600 font-mono">BOM_INSPECTION_SYS // Módulo de Carga</p>
         </div>
 
         <div
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className={`relative overflow-hidden border-2 border-dashed rounded-[2rem] p-12 text-center transition-all duration-300 ease-out bg-slate-800/40 backdrop-blur-sm ${
+          className={`relative overflow-hidden border-2 border-dashed rounded-[2rem] p-12 text-center transition-all duration-300 ease-out bg-slate-100/40 backdrop-blur-sm ${
             isDragging 
-              ? 'border-industrial-accent bg-industrial-accent/10 scale-105 shadow-[0_0_40px_rgba(14,165,233,0.3)]' 
-              : 'border-slate-600 hover:border-slate-500 hover:bg-slate-800/60'
+              ? 'border-dicrejart-red bg-dicrejart-red/10 scale-105 shadow-[0_0_40px_rgba(14,165,233,0.3)]' 
+              : 'border-slate-200 hover:border-slate-500 hover:bg-slate-100/60'
           }`}
         >
           <input
@@ -115,34 +115,34 @@ export const ModelUploader = () => {
           <div className="flex flex-col items-center justify-center pointer-events-none space-y-6">
             {isModelLoading ? (
               <>
-                <div className="p-6 rounded-full bg-industrial-accent/20 text-industrial-accent animate-pulse">
+                <div className="p-6 rounded-full bg-dicrejart-red/20 text-dicrejart-violet animate-pulse">
                   <Loader2 className="w-16 h-16 animate-spin" />
                 </div>
                 <div>
-                  <p className="text-xl font-bold text-white mb-2">
+                  <p className="text-xl font-bold text-dicrejart-violet mb-2">
                     Procesando Archivo
                   </p>
-                  <p className="text-industrial-accent text-sm font-mono animate-pulse">
+                  <p className="text-dicrejart-violet text-sm font-mono animate-pulse">
                     {conversionProgress || 'Extrayendo geometría...'}
                   </p>
                 </div>
               </>
             ) : (
               <>
-                <div className={`p-6 rounded-full transition-colors duration-300 ${isDragging ? 'bg-industrial-accent/20 text-industrial-accent' : 'bg-slate-700/50 text-slate-400'}`}>
+                <div className={`p-6 rounded-full transition-colors duration-300 ${isDragging ? 'bg-dicrejart-red/20 text-dicrejart-violet' : 'bg-slate-200/50 text-slate-600'}`}>
                   <UploadCloud className="w-16 h-16" />
                 </div>
                 
                 <div>
-                  <p className="text-xl font-bold text-white mb-2">
+                  <p className="text-xl font-bold text-dicrejart-violet mb-2">
                     Arrastra tu ensamble aquí
                   </p>
-                  <p className="text-slate-400 text-sm">
+                  <p className="text-slate-600 text-sm">
                     o haz clic para explorar tus archivos locales
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 text-xs font-mono text-slate-500 bg-slate-900/50 px-4 py-2 rounded-full border border-slate-700/50">
+                <div className="flex items-center gap-2 text-xs font-mono text-slate-500 bg-white/50 px-4 py-2 rounded-full border border-slate-300/50">
                   <FileBox className="w-4 h-4" />
                   Soporta formatos nativos .SKP, .GLB y .GLTF
                 </div>
