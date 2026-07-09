@@ -91,28 +91,54 @@ export const AssemblyControls = () => {
       {/* Controles de Escala AR, Cámara y Opacidad */}
       <div className="flex flex-col gap-2 bg-slate-100/50 p-2 md:p-3 rounded-xl border border-slate-300/50">
         <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={toggleOrthographic}
-              className={`px-2 py-1 md:px-3 md:py-1.5 rounded-lg text-[10px] md:text-xs font-bold tracking-widest transition-colors ${
-                isOrthographic 
-                  ? 'bg-sky-500 text-dicrejart-violet shadow-[0_0_10px_rgba(14,165,233,0.5)]' 
-                  : 'bg-slate-200 text-slate-700 hover:bg-slate-600'
-              }`}
-            >
-              {isOrthographic ? 'PARALELO' : 'PERSPECTIVA'}
-            </button>
-            <button 
-              onClick={toggleGrid}
-              className={`px-2 py-1 md:px-3 md:py-1.5 rounded-lg text-[10px] md:text-xs font-bold tracking-widest transition-colors ${
-                showGrid 
-                  ? 'bg-sky-500 text-dicrejart-violet shadow-[0_0_10px_rgba(14,165,233,0.5)]' 
-                  : 'bg-slate-200 text-slate-700 hover:bg-slate-600'
-              }`}
-              title="Mostrar/Ocultar Cuadrícula"
-            >
-              MALLA
-            </button>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={toggleOrthographic}
+                className={`px-2 py-1 md:px-3 md:py-1.5 rounded-lg text-[10px] md:text-xs font-bold tracking-widest transition-colors ${
+                  isOrthographic 
+                    ? 'bg-sky-500 text-dicrejart-violet shadow-[0_0_10px_rgba(14,165,233,0.5)]' 
+                    : 'bg-slate-200 text-slate-700 hover:bg-slate-600 hover:text-white'
+                }`}
+              >
+                {isOrthographic ? 'PARALELO' : 'PERSPECTIVA'}
+              </button>
+              <button 
+                onClick={toggleGrid}
+                className={`px-2 py-1 md:px-3 md:py-1.5 rounded-lg text-[10px] md:text-xs font-bold tracking-widest transition-colors ${
+                  showGrid 
+                    ? 'bg-sky-500 text-dicrejart-violet shadow-[0_0_10px_rgba(14,165,233,0.5)]' 
+                    : 'bg-slate-200 text-slate-700 hover:bg-slate-600 hover:text-white'
+                }`}
+                title="Mostrar/Ocultar Cuadrícula"
+              >
+                MALLA
+              </button>
+            </div>
+            
+            {/* Controles de Nivel Gerencial / Mantenimiento */}
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={useViewerStore.getState().toggleHeatmapMode}
+                className={`flex-1 px-2 py-1 md:py-1.5 rounded-lg text-[10px] md:text-xs font-bold tracking-widest transition-colors ${
+                  useViewerStore((state) => state.isHeatmapMode)
+                    ? 'bg-orange-500 text-white shadow-[0_0_15px_rgba(249,115,22,0.5)]' 
+                    : 'bg-slate-200 text-slate-700 hover:bg-slate-600 hover:text-white'
+                }`}
+              >
+                MAPA CALOR
+              </button>
+              <button 
+                onClick={useViewerStore.getState().toggleReportMode}
+                className={`flex-1 px-2 py-1 md:py-1.5 rounded-lg text-[10px] md:text-xs font-bold tracking-widest transition-colors ${
+                  useViewerStore((state) => state.isReportMode)
+                    ? 'bg-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.5)]' 
+                    : 'bg-slate-200 text-slate-700 hover:bg-slate-600 hover:text-white'
+                }`}
+              >
+                REPORTE AR
+              </button>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">

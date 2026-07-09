@@ -30,6 +30,8 @@ export const ViewerPage = () => {
   const activeSubModelId = useViewerStore((state) => state.activeSubModelId);
   const setActiveSubModelId = useViewerStore((state) => state.setActiveSubModelId);
   const setSplitRequest = useViewerStore((state) => state.setSplitRequest);
+  const reportTarget = useViewerStore((state) => state.reportTarget);
+  const setReportTarget = useViewerStore((state) => state.setReportTarget);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showToast, setShowToast] = useState(false);
@@ -349,6 +351,38 @@ export const ViewerPage = () => {
       >
         <Upload className="w-5 h-5" />
       </button>
+
+      {/* Modal Reporte de Daños */}
+      {reportTarget && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl border border-red-500/30">
+             <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-red-600 flex items-center gap-2">
+                   <Camera className="w-6 h-6" /> Reporte de Daños
+                </h2>
+                <button onClick={() => setReportTarget(null)} className="text-slate-400 hover:text-slate-700 font-bold text-2xl leading-none">&times;</button>
+             </div>
+             <p className="text-slate-600 mb-4 text-sm">Has detectado un problema o daño en la siguiente pieza en piso de producción:</p>
+             <div className="bg-slate-100 p-4 rounded-xl border border-slate-300 mb-6">
+                 <p className="font-mono text-xs text-slate-500 mb-1 tracking-wider">ID DE LA PIEZA (UUID)</p>
+                 <p className="font-bold text-dicrejart-violet break-all font-mono text-sm">{reportTarget.uuid}</p>
+                 <p className="font-mono text-xs text-slate-500 mt-4 mb-1 tracking-wider">CÓDIGO INTERNO</p>
+                 <p className="font-bold text-slate-800">{reportTarget.id}</p>
+             </div>
+             <button 
+                onClick={() => {
+                   setReportTarget(null);
+                   setShowToast(true);
+                   setTimeout(() => setShowToast(false), 4000);
+                }}
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl shadow-[0_5px_15px_rgba(220,38,38,0.4)] flex items-center justify-center gap-2 transition-all active:scale-95"
+             >
+                <Camera className="w-5 h-5" />
+                TOMAR FOTO CON CÁMARA
+             </button>
+          </div>
+        </div>
+      )}
 
     </div>
       )}

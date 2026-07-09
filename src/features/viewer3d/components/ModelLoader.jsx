@@ -35,9 +35,11 @@ const ModelCore = ({ scene }) => {
   const setSelectedPartId = useViewerStore((state) => state.setSelectedPartId);
   const assemblyLevel = useViewerStore((state) => state.assemblyLevel);
   const setMaxAssemblyLevel = useViewerStore((state) => state.setMaxAssemblyLevel);
-  // Escuchamos el estado de explosión directamente
   const isExploded = useViewerStore((state) => state.isExploded);
   const modelOpacity = useViewerStore((state) => state.modelOpacity);
+  const isHeatmapMode = useViewerStore((state) => state.isHeatmapMode);
+  const isReportMode = useViewerStore((state) => state.isReportMode);
+  const setReportTarget = useViewerStore((state) => state.setReportTarget);
 
   // Referencia mutable para iterar meshes eficientemente en useFrame sin re-renderizar
   const meshesRef = useRef([]);
@@ -462,12 +464,14 @@ const ModelCore = ({ scene }) => {
     }
   }, [splitRequest]);
 
-  // Efecto para "despertar" las piezas cuando cambia la animación o la selección
+  // Efecto para "despertar" las piezas cuando cambia la animación o la selección o el heatmap
   useEffect(() => {
     meshesRef.current.forEach(mesh => {
       mesh.userData.isSleeping = false;
+      // Forzar que actualice color reseteando su state local si cambiamos heatmap
+      mesh.userData.selectionState = -1; 
     });
-  }, [assemblyLevel, isExploded, selectedPartId, selectedMeshUuid]);
+  }, [assemblyLevel, isExploded, selectedPartId, selectedMeshUuid, isHeatmapMode]);
 
   // Instanciamos un solo vector temporal fuera del loop para evitar Garbage Collection
   const _tempVec = new THREE.Vector3();
@@ -518,13 +522,22 @@ const ModelCore = ({ scene }) => {
       if (selectionState !== mesh.userData.selectionState) {
         mesh.userData.selectionState = selectionState;
         
-        let targetColor = mesh.userData.originalMaterial && mesh.userData.originalMaterial.color 
-            ? mesh.userData.originalMaterial.color 
-            : new THREE.Color(0x333333);
+        let targetColor;
+        
+        if (isHeatmapMode) {
+            // Calcular dificultad estática (0 a 1) usando hash simple del level
+            const difficulty = ((mesh.userData.requiredLevel * 37) % 100) / 100;
+            // Hue de 0.33 (Verde) a 0.0 (Rojo)
+            targetColor = new THREE.Color().setHSL((1 - difficulty) * 0.33, 1.0, 0.5);
+        } else {
+            targetColor = mesh.userData.originalMaterial && mesh.userData.originalMaterial.color 
+                ? mesh.userData.originalMaterial.color 
+                : new THREE.Color(0x333333);
+        }
             
-        if (selectionState === 2) {
+        if (selectionState === 2 && !isHeatmapMode) {
             targetColor = new THREE.Color(0xfacc15); // Amarillo vibrante
-        } else if (selectionState === 1) {
+        } else if (selectionState === 1 && !isHeatmapMode) {
             targetColor = new THREE.Color(0x06b6d4); // Cian vibrante
         }
         
@@ -544,14 +557,27 @@ const ModelCore = ({ scene }) => {
     if (e.delta > 2) return; 
 
     e.stopPropagation(); // Evita clics a través de la geometría
+    
+    let targetId = null;
+    let targetUuid = null;
+
     if (e.instanceId !== undefined && e.object.userData.instances) {
       const originalMesh = e.object.userData.instances[e.instanceId];
       if (originalMesh && originalMesh.userData.id) {
-        setSelectedPartId(originalMesh.userData.id, originalMesh.uuid);
+        targetId = originalMesh.userData.id;
+        targetUuid = originalMesh.uuid;
       }
     } else if (e.object && e.object.userData.id) {
-      // Fallback por si acaso
-      setSelectedPartId(e.object.userData.id, e.object.uuid);
+      targetId = e.object.userData.id;
+      targetUuid = e.object.uuid;
+    }
+
+    if (targetId) {
+      if (isReportMode) {
+         setReportTarget({ id: targetId, uuid: targetUuid });
+      } else {
+         setSelectedPartId(targetId, targetUuid);
+      }
     }
   };
 

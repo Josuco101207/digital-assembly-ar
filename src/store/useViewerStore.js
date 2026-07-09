@@ -107,4 +107,14 @@ export const useViewerStore = create((set) => ({
   // Opacidad global del modelo 3D (0.0 a 1.0)
   modelOpacity: 1.0,
   setModelOpacity: (opacity) => set({ modelOpacity: opacity }),
+
+  // Mapas de Calor (Dificultad de Ensamble)
+  isHeatmapMode: false,
+  toggleHeatmapMode: () => set((state) => ({ isHeatmapMode: !state.isHeatmapMode })),
+
+  // Reporte de Daños (AR)
+  isReportMode: false,
+  toggleReportMode: () => set((state) => ({ isReportMode: !state.isReportMode })),
+  reportTarget: null,
+  setReportTarget: (target) => set({ reportTarget: target }),
 }));
