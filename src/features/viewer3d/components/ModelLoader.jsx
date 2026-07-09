@@ -494,41 +494,38 @@ const ModelCore = ({ scene }) => {
       }
 
       if (isVisible) {
-        // Recuperar el tamaño normal
-        if (mesh.scale.x < 1.0) {
-            // Asegurar que si estaban en 0, empiecen desde arriba para la animación de caída
-            if (mesh.scale.x === 0) {
-                mesh.position.copy(_tempVec);
-                mesh.position.y += 10;
-            }
-            mesh.scale.set(1, 1, 1);
-        }
+        // Asegurar la posición correcta
+        mesh.position.copy(_tempVec);
         
-        const dist = mesh.position.distanceToSquared(_tempVec);
-        if (dist > 0.0001) {
-          mesh.position.lerp(_tempVec, delta * 5);
-          mesh.updateWorldMatrix(true, false);
-          mesh.userData.im.setMatrixAt(mesh.userData.instanceId, mesh.matrixWorld);
-          matricesNeedUpdate.add(mesh.userData.im);
-        } else {
-          if (dist > 0) {
-            mesh.position.copy(_tempVec); // Fijar si ya llegó
+        // Animación de aparición (Scale IN)
+        if (mesh.scale.x < 1.0) {
+            mesh.scale.lerp(new THREE.Vector3(1, 1, 1), delta * 10);
             mesh.updateWorldMatrix(true, false);
             mesh.userData.im.setMatrixAt(mesh.userData.instanceId, mesh.matrixWorld);
             matricesNeedUpdate.add(mesh.userData.im);
-          }
-          // ¡Llegó a su destino! Poner a dormir la pieza
-          mesh.userData.isSleeping = true;
+            mesh.userData.isSleeping = false;
+        } else {
+            mesh.scale.set(1, 1, 1);
+            mesh.updateWorldMatrix(true, false);
+            mesh.userData.im.setMatrixAt(mesh.userData.instanceId, mesh.matrixWorld);
+            matricesNeedUpdate.add(mesh.userData.im);
+            mesh.userData.isSleeping = true;
         }
       } else {
-        // Ocultar la pieza si no pertenece al paso actual
-        if (mesh.scale.x > 0) {
-           mesh.scale.set(0, 0, 0); 
+        // Animación de desaparición (Scale OUT)
+        if (mesh.scale.x > 0.01) {
+           mesh.scale.lerp(new THREE.Vector3(0.0001, 0.0001, 0.0001), delta * 15); 
            mesh.updateWorldMatrix(true, false);
            mesh.userData.im.setMatrixAt(mesh.userData.instanceId, mesh.matrixWorld);
            matricesNeedUpdate.add(mesh.userData.im);
+           mesh.userData.isSleeping = false;
+        } else {
+           mesh.scale.set(0.0001, 0.0001, 0.0001);
+           mesh.updateWorldMatrix(true, false);
+           mesh.userData.im.setMatrixAt(mesh.userData.instanceId, mesh.matrixWorld);
+           matricesNeedUpdate.add(mesh.userData.im);
+           mesh.userData.isSleeping = true;
         }
-        mesh.userData.isSleeping = true;
       }
 
       // 3. Feedback Visual de Selección OPTIMIZADO (usando setColorAt en InstancedMesh)
