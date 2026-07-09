@@ -494,7 +494,16 @@ const ModelCore = ({ scene }) => {
       }
 
       if (isVisible) {
-        mesh.scale.set(1, 1, 1);
+        // Recuperar el tamaño normal
+        if (mesh.scale.x < 1.0) {
+            // Asegurar que si estaban en 0, empiecen desde arriba para la animación de caída
+            if (mesh.scale.x === 0) {
+                mesh.position.copy(_tempVec);
+                mesh.position.y += 10;
+            }
+            mesh.scale.set(1, 1, 1);
+        }
+        
         const dist = mesh.position.distanceToSquared(_tempVec);
         if (dist > 0.0001) {
           mesh.position.lerp(_tempVec, delta * 5);
@@ -512,32 +521,14 @@ const ModelCore = ({ scene }) => {
           mesh.userData.isSleeping = true;
         }
       } else {
-        if (mesh.userData.isVisibleInSubmodel === false) {
-           mesh.scale.set(0, 0, 0); // Ocultar instantáneamente
+        // Ocultar la pieza si no pertenece al paso actual
+        if (mesh.scale.x > 0) {
+           mesh.scale.set(0, 0, 0); 
            mesh.updateWorldMatrix(true, false);
            mesh.userData.im.setMatrixAt(mesh.userData.instanceId, mesh.matrixWorld);
            matricesNeedUpdate.add(mesh.userData.im);
-           mesh.userData.isSleeping = true;
-        } else {
-           // La pieza espera arriba en el aire
-           _tempVec.y += 10;
-           mesh.scale.set(1, 1, 1);
-           const dist = mesh.position.distanceToSquared(_tempVec);
-           if (dist > 0.0001) {
-              mesh.position.lerp(_tempVec, delta * 5);
-              mesh.updateWorldMatrix(true, false);
-              mesh.userData.im.setMatrixAt(mesh.userData.instanceId, mesh.matrixWorld);
-              matricesNeedUpdate.add(mesh.userData.im);
-           } else {
-              if (dist > 0) {
-                 mesh.position.copy(_tempVec);
-                 mesh.updateWorldMatrix(true, false);
-                 mesh.userData.im.setMatrixAt(mesh.userData.instanceId, mesh.matrixWorld);
-                 matricesNeedUpdate.add(mesh.userData.im);
-              }
-              mesh.userData.isSleeping = true;
-           }
         }
+        mesh.userData.isSleeping = true;
       }
 
       // 3. Feedback Visual de Selección OPTIMIZADO (usando setColorAt en InstancedMesh)
