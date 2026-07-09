@@ -173,7 +173,7 @@ const ModelCore = ({ scene }) => {
     processedMeshes.forEach(child => {
         const cleanName = child.userData.tempName;
         const box = new THREE.Box3().setFromObject(child);
-        const bottomY = box.min.y;
+        const bottomY = box.isEmpty() ? 0 : box.min.y;
 
         child.userData = {
           id: cleanName,
@@ -209,10 +209,6 @@ const ModelCore = ({ scene }) => {
         mesh.userData.requiredLevel = currentLevel;
       });
 
-      // Actualizar el UI para mostrar exactamente cuántos niveles se detectaron
-      setMaxAssemblyLevel(currentLevel);
-      useViewerStore.getState().setAssemblyLevel(currentLevel);
-      
       // === EXTRACCIÓN DE POSTES PARA LA CUADRÍCULA ===
       const rawX = [];
       const rawZ = [];
@@ -386,6 +382,12 @@ const ModelCore = ({ scene }) => {
 
   // Sync detected submodels to store ONCE when model loads
   useEffect(() => {
+     if (memoData && memoData.pMeshes && memoData.pMeshes.length > 0) {
+        // Safe to set state here instead of useMemo
+        setMaxAssemblyLevel(memoData.pMeshes.length);
+        useViewerStore.getState().setAssemblyLevel(memoData.pMeshes.length);
+     }
+     
      if (memoData && memoData.detectedSubModels.length > 0) {
         useViewerStore.getState().setSubModels(memoData.detectedSubModels);
         useViewerStore.getState().setActiveSubModelId(memoData.detectedSubModels[0].id);
@@ -393,7 +395,7 @@ const ModelCore = ({ scene }) => {
         useViewerStore.getState().setSubModels([]);
         useViewerStore.getState().setActiveSubModelId(null);
      }
-  }, [memoData]);
+  }, [memoData, setMaxAssemblyLevel]);
 
   // Filter meshes whenever active submodel changes
   useEffect(() => {
