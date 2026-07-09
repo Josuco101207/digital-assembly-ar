@@ -161,7 +161,8 @@ export const ViewerScene = () => {
       <ErrorBoundary>
         <Canvas 
           shadows={false} 
-          dpr={[1, 2]} // High resolution
+          dpr={[1, 1.5]} // Limite estricto para tablets
+          performance={{ min: 0.5 }} // Escalamiento dinámico si hay lag
           gl={{ 
             antialias: true, // Antialiasing activado para eliminar bordes dentados
             powerPreference: "high-performance",
@@ -188,11 +189,11 @@ export const ViewerScene = () => {
             makeDefault 
             minPolarAngle={0} 
             maxPolarAngle={Math.PI} // Permite rotar completamente por debajo del modelo
-            rotateSpeed={0.4} // Menos sensibilidad al rotar
-            panSpeed={0.4} // Menos sensibilidad al panear
-            zoomSpeed={0.5} // Menos sensibilidad al hacer zoom
+            rotateSpeed={0.8} // Mucho más ágil para girar en táctil
+            panSpeed={0.8} // Paneado rápido
+            zoomSpeed={1.5} // Zoom instantáneo y fluido
             enableDamping={true} // Movimiento suave con inercia
-            dampingFactor={0.1}
+            dampingFactor={0.05} // Inercia más corta, sensación de mayor control
           />
 
           {/* ViewCube interactivo estilo CAD (arriba a la derecha) */}

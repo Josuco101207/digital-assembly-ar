@@ -437,12 +437,22 @@ const ModelCore = ({ scene }) => {
     }
   }, [splitRequest]);
 
+  // Efecto para "despertar" las piezas cuando cambia la animación o la selección
+  useEffect(() => {
+    meshesRef.current.forEach(mesh => {
+      mesh.userData.isSleeping = false;
+    });
+  }, [assemblyLevel, isExploded, selectedPartId, selectedMeshUuid]);
+
   // Instanciamos un solo vector temporal fuera del loop para evitar Garbage Collection
   const _tempVec = new THREE.Vector3();
 
   // Loop de Animación de Alto Rendimiento (60 FPS)
   useFrame((state, delta) => {
     meshesRef.current.forEach((mesh) => {
+      // Modo hibernación para no matar la batería/CPU de la tablet si ya llegó a su sitio
+      if (mesh.userData.isSleeping) return;
+
       // 1. Lógica de Secuencia de Armado (Caída en Y)
       const isVisible = assemblyLevel >= mesh.userData.requiredLevel;
       
@@ -456,23 +466,28 @@ const ModelCore = ({ scene }) => {
 
       if (isVisible) {
         mesh.visible = true;
-        if (mesh.position.distanceToSquared(_tempVec) > 0.0001) {
+        const dist = mesh.position.distanceToSquared(_tempVec);
+        if (dist > 0.0001) {
           mesh.position.lerp(_tempVec, delta * 5);
           mesh.updateMatrix();
         } else {
-          if (mesh.position.distanceToSquared(_tempVec) > 0) {
+          if (dist > 0) {
             mesh.position.copy(_tempVec); // Fijar si ya llegó
             mesh.updateMatrix();
           }
+          // ¡Llegó a su destino! Poner a dormir la pieza
+          mesh.userData.isSleeping = true;
         }
       } else {
         mesh.visible = false;
         // La pieza espera arriba en el aire
         _tempVec.y += 10;
-        if (mesh.position.distanceToSquared(_tempVec) > 0) {
+        const dist = mesh.position.distanceToSquared(_tempVec);
+        if (dist > 0) {
           mesh.position.copy(_tempVec);
           mesh.updateMatrix();
         }
+        mesh.userData.isSleeping = true;
       }
 
       // 3. Feedback Visual de Selección OPTIMIZADO con Distinción Principal/Secundaria
