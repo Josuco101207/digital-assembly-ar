@@ -69,17 +69,14 @@ const ModelCore = ({ scene }) => {
     
     // Recorremos la escena original del GLB/GLTF
     scene.traverse((child) => {
-      // 1. Limpieza visual: Ocultar líneas, puntos, bocetos y grillas de Inventor
-      if (child.isLine || child.isLineLoop || child.isLineSegments || child.isPoints || child.isSprite) {
-        child.visible = false;
-        return;
-      }
-
+      // 1. Ya no ocultamos líneas ni puntos por defecto para permitir que los "sketches" o bocetos CAD se vean.
+      // Sin embargo, las líneas no se pueden instanciar, así que quedarán estáticas en la escena base.
+      
       if (child.isMesh) {
         child.matrixAutoUpdate = false;
-        // Ocultar mallas que sean claramente textos o grillas por nombre
+        // Ocultar mallas que sean claramente textos o grillas por nombre, pero PERMITIR sketch/boceto
         const n = (child.name || "").toLowerCase();
-        if (n.includes('text') || n.includes('grid') || n.includes('sketch') || n.includes('boceto') || n.includes('axis') || n.includes('eje') || n.includes('annotation')) {
+        if (n.includes('grid') || n.includes('axis') || n.includes('eje') || n.includes('annotation')) {
           child.visible = false;
           return;
         }
