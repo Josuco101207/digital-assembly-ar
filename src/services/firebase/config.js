@@ -3,12 +3,12 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDWOFFslHI0eSqyUf_tb1D1VlzMZmNemmM",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "inventor-manager-a0b4d.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "inventor-manager-a0b4d",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "inventor-manager-a0b4d.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "213399034117",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:213399034117:web:4311dbe23b8d51f6fe7f6c",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyCbtLATi5sFP0IDgdVoPp8uWXr1KKoa9y8",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "ensamblesmart.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "ensamblesmart",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "ensamblesmart.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "1098932739718",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:1098932739718:web:10227cba09af843e563b07",
 };
 
 // Initialize Firebase
