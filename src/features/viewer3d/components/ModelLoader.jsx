@@ -477,37 +477,31 @@ const ModelCore = ({ scene }) => {
     let matricesNeedUpdate = new Set();
     let colorsNeedUpdate = new Set();
 
+    const zeroMatrix = new THREE.Matrix4().makeScale(0, 0, 0);
+    
     meshesRef.current.forEach((mesh) => {
-      // Modo hibernación para no matar la batería/CPU de la tablet si ya llegó a su sitio
       if (mesh.userData.isSleeping) return;
 
-      // 1. Lógica de Secuencia de Armado (Caída en Y)
       const isVisible = (assemblyLevel >= mesh.userData.requiredLevel) && (mesh.userData.isVisibleInSubmodel !== false);
       
-      // Reutilizamos el vector en lugar de usar .clone() que mata la memoria
       _tempVec.copy(mesh.userData.originalPosition);
       if (isExploded) {
-        // Calculamos la dirección desde el centroide y aplicamos el factor de explosión (2.0)
         _tempVec.sub(centroidRef.current);
         _tempVec.multiplyScalar(2.0);
         _tempVec.add(centroidRef.current);
       }
 
       if (isVisible) {
-        // Asegurar la posición correcta
+        // Restaurar posición y escalar normalmente
         mesh.position.copy(_tempVec);
         mesh.scale.set(1, 1, 1);
-        
         mesh.updateWorldMatrix(true, false);
         mesh.userData.im.setMatrixAt(mesh.userData.instanceId, mesh.matrixWorld);
         matricesNeedUpdate.add(mesh.userData.im);
         mesh.userData.isSleeping = true;
       } else {
-        // Teletransportar a infinito para desaparecer instantáneamente
-        mesh.position.set(0, 999999, 0);
-        mesh.scale.set(0.001, 0.001, 0.001); // Por si acaso
-        mesh.updateWorldMatrix(true, false);
-        mesh.userData.im.setMatrixAt(mesh.userData.instanceId, mesh.matrixWorld);
+        // Ocultar inyectando una matriz de escala 0 directamente en el InstancedMesh
+        mesh.userData.im.setMatrixAt(mesh.userData.instanceId, zeroMatrix);
         matricesNeedUpdate.add(mesh.userData.im);
         mesh.userData.isSleeping = true;
       }
