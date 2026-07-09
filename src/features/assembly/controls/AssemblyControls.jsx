@@ -62,11 +62,29 @@ export const AssemblyControls = () => {
         </span>
       </div>
 
-      {/* Barra de progreso sleek (sin scrollbar fea) */}
-      <div className="relative w-full h-2 bg-slate-100 rounded-full overflow-hidden shadow-inner border border-slate-900/80">
+      {/* Barra de progreso interactiva (Slider) */}
+      <div className="relative w-full h-4 flex items-center group">
+        <input
+          type="range"
+          min="1"
+          max={maxAssemblyLevel || 1}
+          value={assemblyLevel}
+          onChange={(e) => setAssemblyLevel(parseInt(e.target.value))}
+          className="absolute z-10 w-full h-full opacity-0 cursor-pointer"
+          title="Arrastra para saltar a un paso específico"
+        />
+        <div className="relative w-full h-2 bg-slate-200 rounded-full overflow-hidden shadow-inner border border-slate-300">
+          <div 
+            className="absolute top-0 left-0 h-full bg-gradient-to-r from-dicrejart-blue to-sky-300 transition-all duration-150 ease-out shadow-[0_0_10px_rgba(0,153,204,0.6)]"
+            style={{ width: `${maxAssemblyLevel > 1 ? ((assemblyLevel - 1) / (maxAssemblyLevel - 1)) * 100 : 100}%` }}
+          />
+        </div>
+        {/* Thumb visual */}
         <div 
-          className="absolute top-0 left-0 h-full bg-gradient-to-r from-sky-600 to-sky-400 transition-all duration-500 ease-out shadow-[0_0_10px_rgba(56,189,248,0.8)]"
-          style={{ width: `${maxAssemblyLevel > 1 ? ((assemblyLevel - 1) / (maxAssemblyLevel - 1)) * 100 : 100}%` }}
+          className="absolute w-4 h-4 bg-white border-2 border-dicrejart-blue rounded-full shadow-md pointer-events-none transition-all duration-150 group-hover:scale-125"
+          style={{ 
+            left: `calc(${maxAssemblyLevel > 1 ? ((assemblyLevel - 1) / (maxAssemblyLevel - 1)) * 100 : 100}% - 8px)` 
+          }}
         />
       </div>
 
