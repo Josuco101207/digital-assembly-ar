@@ -1,6 +1,6 @@
 import { db, storage } from './config';
 import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getBytes, deleteObject } from 'firebase/storage';
+import { ref, uploadBytes, getBytes, deleteObject, getDownloadURL } from 'firebase/storage';
 import * as fflate from 'fflate';
 
 const CHUNK_SIZE = 40 * 1024 * 1024; // 40MB chunks
@@ -48,10 +48,18 @@ export const downloadModelChunked = async (modelUrl, setUploadStatus) => {
     const chunkName = `models/${prefix}.part${i}`;
     const chunkRef = ref(storage, chunkName);
     
-    const arrayBuffer = await getBytes(chunkRef);
-    const uint8Arr = new Uint8Array(arrayBuffer);
-    chunks.push(uint8Arr);
-    totalLength += uint8Arr.length;
+    try {
+      const url = await getDownloadURL(chunkRef);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      const arrayBuffer = await res.arrayBuffer();
+      const uint8Arr = new Uint8Array(arrayBuffer);
+      chunks.push(uint8Arr);
+      totalLength += uint8Arr.length;
+    } catch (error) {
+      console.error(`Error descargando fragmento ${i}:`, error);
+      throw error;
+    }
   }
   
   if (setUploadStatus) setUploadStatus('Uniendo y descomprimiendo archivo 3D...');
